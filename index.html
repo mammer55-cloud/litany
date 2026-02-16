@@ -10,43 +10,35 @@
         :root { --gold: #f39c12; --glass: rgba(255, 255, 255, 0.1); }
         body { margin: 0; font-family: 'Inter', sans-serif; transition: background 1.5s ease; overflow: hidden; background: #121212; color: white; }
         
-        /* Navigation */
         .nav { position: fixed; bottom: 0; width: 100%; display: flex; background: rgba(20,20,20,0.8); backdrop-filter: blur(10px); padding: 15px 0; z-index: 1000; border-top: 1px solid var(--glass); }
         .nav button { flex: 1; background: none; border: none; color: white; opacity: 0.5; font-weight: 600; cursor: pointer; }
         .nav button.active { opacity: 1; color: var(--gold); }
 
-        /* Pages */
         .page { display: none; height: 100vh; overflow-y: auto; padding: 20px; box-sizing: border-box; }
         .page.active { display: block; }
 
-        /* Cards */
-        .card { background: var(--glass); border-radius: 20px; padding: 20px; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.1); transition: transform 0.2s; }
-        .card:active { transform: scale(0.98); }
-        .arabic { font-size: 2rem; direction: rtl; line-height: 1.8; margin: 15px 0; font-family: "Traditional Arabic", serif; }
+        .card { background: var(--glass); border-radius: 20px; padding: 20px; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.1); }
+        .arabic { font-size: 2.2rem; direction: rtl; line-height: 1.8; margin: 15px 0; font-family: serif; }
 
-        /* Flow Mode (Infinite Scroll) */
         #scroll-view { height: 100vh; overflow-y: scroll; scroll-snap-type: y mandatory; }
         .dhikr-row { height: 60vh; display: flex; flex-direction: column; justify-content: center; align-items: center; scroll-snap-align: center; text-align: center; opacity: 0.2; transition: opacity 0.5s; }
-        .dhikr-row.active { opacity: 1; }
+        .dhikr-row.active { opacity: 1; transform: scale(1.05); }
         .center-line { position: fixed; top: 50%; width: 80%; left: 10%; height: 1px; background: var(--gold); opacity: 0.3; pointer-events: none; }
 
-        /* Tapper Mode */
-        .tap-zone { height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
-        .counter { font-size: 5rem; font-weight: 100; margin: 20px 0; }
-
         .btn-main { background: var(--gold); color: white; border: none; padding: 12px 20px; border-radius: 50px; font-weight: bold; width: 100%; margin-top: 10px; cursor: pointer; }
+        .counter-big { font-size: 6rem; font-weight: 100; margin: 20px 0; }
     </style>
 </head>
 <body>
 
     <div id="home" class="page active">
-        <h1>Welcome, Mustafa</h1>
-        <p id="prayer-status" style="opacity: 0.6; font-size: 0.9rem;">Fetching prayer times...</p>
+        <h1>My Roster</h1>
+        <p id="prayer-status" style="opacity: 0.6; font-size: 0.8rem;">Detecting prayer times...</p>
         <div id="roster-list"></div>
     </div>
 
     <div id="shop" class="page">
-        <h1>The Shop</h1>
+        <h1>Dhikr Shop</h1>
         <div id="shop-list"></div>
     </div>
 
@@ -62,24 +54,22 @@
 
     <script>
         const supabase = supabase.createClient(SB_URL, SB_KEY);
-        let currentLitany = [];
+        let tapState = { items: [], index: 0, count: 0 };
 
-        // --- THEME LOGIC ---
         async function applyTheme() {
             navigator.geolocation.getCurrentPosition(async (pos) => {
                 const res = await fetch(`https://api.aladhan.com/v1/timings?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&method=2`);
                 const { data } = await res.json();
                 const now = new Date();
-                const timeStr = now.getHours() + ":" + now.getMinutes();
+                const timeStr = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
                 
                 const isDay = timeStr >= data.timings.Fajr && timeStr < data.timings.Maghrib;
-                document.body.style.background = isDay ? "linear-gradient(to bottom, #FFEFBA, #FFFFFF)" : "linear-gradient(to bottom, #0F2027, #203A43, #2C5364)";
+                document.body.style.background = isDay ? "linear-gradient(to bottom, #FFEFBA, #FFFFFF)" : "linear-gradient(to bottom, #1a1a2e, #16213e)";
                 document.body.style.color = isDay ? "#333" : "#eee";
-                document.getElementById('prayer-status').innerText = isDay ? `Next: Maghrib at ${data.timings.Maghrib}` : `Next: Fajr at ${data.timings.Fajr}`;
+                document.getElementById('prayer-status').innerText = isDay ? `Day Mode: Maghrib at ${data.timings.Maghrib}` : `Night Mode: Fajr at ${data.timings.Fajr}`;
             });
         }
 
-        // --- NAVIGATION ---
         function showPage(id) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
@@ -90,21 +80,20 @@
             document.getElementById('line-visual').style.display = 'none';
         }
 
-        // --- SHOP & ROSTER LOGIC ---
         async function loadShop() {
             const { data } = await supabase.from('adhkar_blocks').select('*');
             document.getElementById('shop-list').innerHTML = data.map(item => `
                 <div class="card">
                     <h3>${item.title}</h3>
                     <div class="arabic">${item.arabic}</div>
-                    <button class="btn-main" onclick="addToRoster('${item.id}')">Add to My Litanies</button>
+                    <button class="btn-main" onclick="addToRoster('${item.id}')">Add to Roster</button>
                 </div>
             `).join('');
         }
 
         async function addToRoster(blockId) {
-            const litName = prompt("Name of Litany (e.g. Morning):", "General");
-            const count = prompt("How many times?", "33");
+            const litName = prompt("Add to which list? (e.g. Morning)", "General");
+            const count = prompt("How many repetitions?", "33");
             if(!count || !litName) return;
 
             let { data: lit } = await supabase.from('litanies').select('id').eq('name', litName).single();
@@ -112,13 +101,8 @@
                 const { data: newLit } = await supabase.from('litanies').insert({ name: litName }).select().single();
                 lit = newLit;
             }
-
-            await supabase.from('litany_structure').insert({
-                litany_id: lit.id,
-                block_id: blockId,
-                user_count: parseInt(count)
-            });
-            alert("Added!");
+            await supabase.from('litany_structure').insert({ litany_id: lit.id, block_id: blockId, user_count: parseInt(count) });
+            alert("Saved to " + litName);
         }
 
         async function loadRoster() {
@@ -126,14 +110,14 @@
             document.getElementById('roster-list').innerHTML = data.map(lit => `
                 <div class="card">
                     <h2>${lit.name}</h2>
-                    <p>${lit.litany_structure.length} items</p>
-                    <button class="btn-main" onclick="startFlow('${lit.id}')">🌊 Flow Mode</button>
-                    <button class="btn-main" style="background:#666; margin-top:5px;" onclick="startTap('${lit.id}')">👆 Tap Mode</button>
+                    <div style="display:flex; gap:10px;">
+                        <button class="btn-main" onclick="startFlow('${lit.id}')">🌊 Flow</button>
+                        <button class="btn-main" style="background:#666;" onclick="startTap('${lit.id}')">👆 Tap</button>
+                    </div>
                 </div>
             `).join('');
         }
 
-        // --- PLAYER MODES ---
         async function startFlow(id) {
             const { data } = await supabase.from('litany_structure').select('user_count, adhkar_blocks(*)').eq('litany_id', id);
             showPage('player');
@@ -145,12 +129,7 @@
             let html = '';
             data.forEach(item => {
                 for(let i=1; i <= item.user_count; i++) {
-                    html += `
-                        <div class="dhikr-row">
-                            <div class="arabic">${item.adhkar_blocks.arabic}</div>
-                            <div style="font-size:0.8rem; opacity:0.5;">${i} / ${item.user_count}</div>
-                        </div>
-                    `;
+                    html += `<div class="dhikr-row"><div class="arabic">${item.adhkar_blocks.arabic}</div><div>${i} / ${item.user_count}</div></div>`;
                 }
             });
             container.innerHTML = html;
@@ -158,17 +137,49 @@
         }
 
         function setupObserver() {
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach(e => {
+            const obs = new IntersectionObserver((es) => {
+                es.forEach(e => {
                     if(e.isIntersecting) {
                         e.target.classList.add('active');
-                        if(navigator.vibrate) navigator.vibrate(10);
-                    } else {
-                        e.target.classList.remove('active');
-                    }
+                        if(navigator.vibrate) navigator.vibrate(15);
+                    } else e.target.classList.remove('active');
                 });
             }, { threshold: 0.6 });
-            document.querySelectorAll('.dhikr-row').forEach(r => observer.observe(r));
+            document.querySelectorAll('.dhikr-row').forEach(r => obs.observe(r));
+        }
+
+        async function startTap(id) {
+            const { data } = await supabase.from('litany_structure').select('user_count, adhkar_blocks(*)').eq('litany_id', id);
+            tapState = { items: data, index: 0, count: 0 };
+            showPage('player');
+            renderTap();
+        }
+
+        function renderTap() {
+            const item = tapState.items[tapState.index];
+            document.getElementById('player-content').innerHTML = `
+                <div class="dhikr-row active" style="height:100vh" onclick="handleTap()">
+                    <div class="arabic">${item.adhkar_blocks.arabic}</div>
+                    <div class="counter-big">${tapState.count}</div>
+                    <p>Tap to count (${tapState.index + 1}/${tapState.items.length})</p>
+                </div>
+            `;
+        }
+
+        function handleTap() {
+            const item = tapState.items[tapState.index];
+            tapState.count++;
+            if(navigator.vibrate) navigator.vibrate(30);
+            if(tapState.count >= item.user_count) {
+                tapState.count = 0;
+                tapState.index++;
+                if(tapState.index >= tapState.items.length) {
+                    alert("Mubarak! Completed.");
+                    showPage('home');
+                    return;
+                }
+            }
+            renderTap();
         }
 
         applyTheme();
