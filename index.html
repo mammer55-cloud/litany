@@ -8,122 +8,44 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@200;400;600&display=swap');
         
-        :root { 
-            --gold: #f39c12; 
-            --glass: rgba(255, 255, 255, 0.08);
-            --bg-night: #0a0a0c;
-        }
+        :root { --gold: #f39c12; --glass: rgba(255, 255, 255, 0.08); --bg-night: #0a0a0c; }
+        body { margin: 0; font-family: 'Inter', sans-serif; transition: all 1.2s ease; background: var(--bg-night); color: white; overflow: hidden; }
 
-        body { 
-            margin: 0; 
-            font-family: 'Inter', sans-serif; 
-            transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1); 
-            background: var(--bg-night); 
-            color: white;
-            overflow: hidden;
-        }
+        /* Ambient Orbs */
+        .orb { position: fixed; width: 300px; height: 300px; border-radius: 50%; filter: blur(80px); z-index: -1; opacity: 0.2; animation: float 20s infinite alternate; }
+        @keyframes float { from { transform: translate(0,0); } to { transform: translate(50px, 100px); } }
 
-        /* Ambient background orbs */
-        .orb {
-            position: fixed;
-            width: 300px;
-            height: 300px;
-            border-radius: 50%;
-            filter: blur(80px);
-            z-index: -1;
-            opacity: 0.2;
-            animation: float 20s infinite alternate;
-        }
-
-        @keyframes float {
-            from { transform: translate(0,0); }
-            to { transform: translate(50px, 100px); }
-        }
-
-        /* Premium Glass Containers */
-        .page { 
-            display: none; 
-            height: 100vh; 
-            overflow-y: auto; 
-            padding: 30px 20px 100px 20px; 
-            box-sizing: border-box; 
-        }
-        .page.active { display: block; animation: fadeIn 0.5s ease; }
-
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .page { display: none; height: 100vh; overflow-y: auto; padding: 30px 20px 120px 20px; box-sizing: border-box; }
+        .page.active { display: block; animation: fadeIn 0.4s ease; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
         .card { 
-            background: var(--glass); 
-            backdrop-filter: blur(15px);
-            border-radius: 24px; 
-            padding: 24px; 
-            margin-bottom: 20px; 
-            border: 1px solid rgba(255,255,255,0.1);
-            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            background: var(--glass); backdrop-filter: blur(15px); border-radius: 24px; padding: 24px; 
+            margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); position: relative;
         }
 
-        .arabic { 
-            font-size: 2.4rem; 
-            direction: rtl; 
-            line-height: 1.6; 
-            margin: 20px 0; 
-            font-family: "Amiri", serif;
-            text-align: center;
+        .arabic { font-size: 2.2rem; direction: rtl; line-height: 1.6; margin: 15px 0; font-family: serif; text-align: center; }
+
+        .delete-btn { 
+            position: absolute; top: 15px; right: 15px; background: rgba(255,0,0,0.2); 
+            border: none; color: #ff7675; border-radius: 50%; width: 30px; height: 30px; 
+            cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;
         }
 
-        /* Navigation Bar */
         .nav { 
-            position: fixed; 
-            bottom: 25px; 
-            left: 50%;
-            transform: translateX(-50%);
-            width: 85%; 
-            display: flex; 
-            background: rgba(25, 25, 25, 0.8); 
-            backdrop-filter: blur(20px); 
-            padding: 10px; 
-            border-radius: 30px;
-            border: 1px solid rgba(255,255,255,0.1);
-            z-index: 1000;
+            position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%); width: 85%; 
+            display: flex; background: rgba(25, 25, 25, 0.8); backdrop-filter: blur(20px); 
+            padding: 10px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.1); z-index: 1000;
         }
-        .nav button { 
-            flex: 1; 
-            background: none; 
-            border: none; 
-            color: white; 
-            opacity: 0.4; 
-            font-size: 0.8rem;
-            font-weight: 600; 
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            cursor: pointer; 
-            padding: 12px 0;
-            transition: 0.3s;
-        }
+        .nav button { flex: 1; background: none; border: none; color: white; opacity: 0.4; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; cursor: pointer; }
         .nav button.active { opacity: 1; color: var(--gold); }
 
-        /* Modes */
-        .btn-action {
-            background: var(--gold);
-            color: black;
-            border: none;
-            padding: 14px;
-            border-radius: 16px;
-            font-weight: 600;
-            width: 100%;
-            cursor: pointer;
-            transition: 0.2s;
-        }
+        .btn-action { background: var(--gold); color: black; border: none; padding: 14px; border-radius: 16px; font-weight: 600; width: 100%; cursor: pointer; }
 
         #scroll-view { height: 100vh; overflow-y: scroll; scroll-snap-type: y mandatory; }
         .dhikr-row { height: 80vh; display: flex; flex-direction: column; justify-content: center; align-items: center; scroll-snap-align: center; opacity: 0.1; transition: 0.6s; }
-        .dhikr-row.active { opacity: 1; transform: scale(1.05); }
-
-        .center-line { 
-            position: fixed; top: 50%; left: 10%; width: 80%; height: 1px; 
-            background: linear-gradient(90deg, transparent, var(--gold), transparent); 
-            opacity: 0.5; pointer-events: none; 
-        }
+        .dhikr-row.active { opacity: 1; }
+        .center-line { position: fixed; top: 50%; left: 10%; width: 80%; height: 1px; background: linear-gradient(90deg, transparent, var(--gold), transparent); opacity: 0.5; pointer-events: none; }
     </style>
 </head>
 <body>
@@ -132,9 +54,9 @@
     <div class="orb" style="background: #4834d4; bottom: -10%; left: -10%;"></div>
 
     <div id="home" class="page active">
-        <h1 style="font-weight: 200; margin-bottom: 5px;">My Roster</h1>
-        <p id="prayer-status" style="opacity: 0.5; font-size: 0.8rem; margin-top: 0;">Syncing with the sun...</p>
-        <div id="roster-list" style="margin-top: 30px;"></div>
+        <h1 style="font-weight: 200;">My Roster</h1>
+        <p id="prayer-status" style="opacity: 0.5; font-size: 0.8rem;">Detecting light in Lexington...</p>
+        <div id="roster-list"></div>
     </div>
 
     <div id="shop" class="page">
@@ -153,7 +75,6 @@
     </nav>
 
     <script>
-        // UPDATED KEYS: Safe to keep in HTML because of your RLS settings
         const SB_URL = "https://qtmbkihjgdtdzjafcpji.supabase.co";
         const SB_KEY = "sb_publishable_v2c41Jbqj-xNtdLMdM__zA_zYc5iQxb";
         const client = supabase.createClient(SB_URL, SB_KEY);
@@ -168,12 +89,14 @@
                 const res = await fetch(`https://api.aladhan.com/v1/timings?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&method=2`);
                 const { data } = await res.json();
                 const now = new Date();
-                const timeStr = now.getHours().toString().padStart(2,'0') + ":" + now.getMinutes().toString().padStart(2,'0');
+                const h = now.getHours().toString().padStart(2,'0');
+                const m = now.getMinutes().toString().padStart(2,'0');
+                const timeStr = `${h}:${m}`;
                 
                 const isDay = timeStr >= data.timings.Fajr && timeStr < data.timings.Maghrib;
                 document.body.style.background = isDay ? "linear-gradient(to bottom, #FFF9E6, #FFFFFF)" : "#0a0a0c";
                 document.body.style.color = isDay ? "#2d3436" : "#f1f2f6";
-                document.getElementById('prayer-status').innerText = isDay ? `Next: Maghrib at ${data.timings.Maghrib}` : `Next: Fajr at ${data.timings.Fajr}`;
+                document.getElementById('prayer-status').innerText = isDay ? `Day Mode: Maghrib at ${data.timings.Maghrib}` : `Night Mode: Fajr at ${data.timings.Fajr}`;
             });
         }
 
@@ -188,14 +111,50 @@
         }
 
         async function loadShop() {
-            const { data } = await client.from('adhkar_blocks').select('*');
+            const { data, error } = await client.from('adhkar_blocks').select('*');
+            if(error) { console.error("Shop Load Error:", error); return; }
             document.getElementById('shop-list').innerHTML = data.map(item => `
                 <div class="card">
                     <div class="arabic">${item.arabic}</div>
-                    <div style="font-size:0.9rem; opacity:0.6; text-align:center;">${item.title}</div>
+                    <div style="font-size:0.8rem; opacity:0.6; text-align:center;">${item.title}</div>
                     <button class="btn-action" style="margin-top:15px;" onclick="addToRoster('${item.id}')">Add to Roster</button>
                 </div>
             `).join('');
+        }
+
+        async function loadRoster() {
+            const { data, error } = await client.from('litanies').select('id, name, litany_structure(id, user_count, adhkar_blocks(*))');
+            if(error) { console.error("Roster Load Error:", error); return; }
+            document.getElementById('roster-list').innerHTML = data.map(lit => `
+                <div class="card">
+                    <button class="delete-btn" onclick="deleteLitany('${lit.id}')">✕</button>
+                    <h2 style="font-weight:400; margin:0 0 5px 0;">${lit.name}</h2>
+                    <div style="margin-bottom:15px;">
+                        ${lit.litany_structure.map(item => `
+                            <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.7rem; background:rgba(255,255,255,0.03); padding:8px; border-radius:10px; margin-top:5px;">
+                                <span>${item.adhkar_blocks.title} (${item.user_count}x)</span>
+                                <button onclick="deleteItem('${item.id}')" style="background:none; border:none; color:#ff7675; cursor:pointer; font-size:1rem;">✕</button>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div style="display:flex; gap:10px;">
+                        <button class="btn-action" onclick="startFlow('${lit.id}')">🌊 Flow</button>
+                        <button class="btn-action" style="background:rgba(255,255,255,0.1); color:white;" onclick="startTap('${lit.id}')">👆 Tap</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function deleteItem(id) {
+            if(!confirm("Remove this item from the litany?")) return;
+            await client.from('litany_structure').delete().eq('id', id);
+            loadRoster();
+        }
+
+        async function deleteLitany(id) {
+            if(!confirm("Delete this entire litany?")) return;
+            await client.from('litanies').delete().eq('id', id);
+            loadRoster();
         }
 
         async function addToRoster(blockId) {
@@ -209,20 +168,7 @@
                 lit = newLit;
             }
             await client.from('litany_structure').insert({ litany_id: lit.id, block_id: blockId, user_count: parseInt(count) });
-            alert("Added to " + litName);
-        }
-
-        async function loadRoster() {
-            const { data } = await client.from('litanies').select('id, name, litany_structure(user_count, adhkar_blocks(*))');
-            document.getElementById('roster-list').innerHTML = data.map(lit => `
-                <div class="card">
-                    <h2 style="font-weight:400; margin:0 0 10px 0;">${lit.name}</h2>
-                    <div style="display:flex; gap:10px;">
-                        <button class="btn-action" onclick="startFlow('${lit.id}')">🌊 Flow</button>
-                        <button class="btn-action" style="background:rgba(255,255,255,0.1); color:white;" onclick="startTap('${lit.id}')">👆 Tap</button>
-                    </div>
-                </div>
-            `).join('');
+            alert("Success.");
         }
 
         async function startFlow(id) {
@@ -231,6 +177,7 @@
             document.getElementById('line-visual').style.display = 'block';
             const container = document.getElementById('player-content');
             container.innerHTML = '';
+            container.id = 'scroll-view';
             
             data.forEach(item => {
                 for(let i=1; i <= item.user_count; i++) {
