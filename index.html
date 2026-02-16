@@ -2,26 +2,46 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Litany App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Litany | Zen Dhikr</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
     <style>
-        body { font-family: sans-serif; margin: 0; background: #121212; color: white; }
-        .nav { display: flex; position: fixed; bottom: 0; width: 100%; background: #1f1f1f; padding: 15px 0; justify-content: space-around; }
-        .page { display: none; padding: 20px; padding-bottom: 80px; }
+        :root { --gold: #f39c12; --glass: rgba(255, 255, 255, 0.1); }
+        body { margin: 0; font-family: 'Inter', sans-serif; transition: background 1.5s ease; overflow: hidden; background: #121212; color: white; }
+        
+        /* Navigation */
+        .nav { position: fixed; bottom: 0; width: 100%; display: flex; background: rgba(20,20,20,0.8); backdrop-filter: blur(10px); padding: 15px 0; z-index: 1000; border-top: 1px solid var(--glass); }
+        .nav button { flex: 1; background: none; border: none; color: white; opacity: 0.5; font-weight: 600; cursor: pointer; }
+        .nav button.active { opacity: 1; color: var(--gold); }
+
+        /* Pages */
+        .page { display: none; height: 100vh; overflow-y: auto; padding: 20px; box-sizing: border-box; }
         .page.active { display: block; }
-        .card { background: #2a2a2a; padding: 15px; border-radius: 12px; margin-bottom: 10px; }
-        .scroll-container { height: 100vh; overflow-y: scroll; scroll-snap-type: y mandatory; }
-        .dhikr-item { height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; scroll-snap-align: start; border-bottom: 1px solid #333; }
-        .success-line { position: fixed; top: 50%; width: 100%; height: 2px; background: rgba(255, 215, 0, 0.3); pointer-events: none; }
-        .arabic { font-size: 2.5rem; direction: rtl; padding: 20px; }
+
+        /* Cards */
+        .card { background: var(--glass); border-radius: 20px; padding: 20px; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.1); transition: transform 0.2s; }
+        .card:active { transform: scale(0.98); }
+        .arabic { font-size: 2rem; direction: rtl; line-height: 1.8; margin: 15px 0; font-family: "Traditional Arabic", serif; }
+
+        /* Flow Mode (Infinite Scroll) */
+        #scroll-view { height: 100vh; overflow-y: scroll; scroll-snap-type: y mandatory; }
+        .dhikr-row { height: 60vh; display: flex; flex-direction: column; justify-content: center; align-items: center; scroll-snap-align: center; text-align: center; opacity: 0.2; transition: opacity 0.5s; }
+        .dhikr-row.active { opacity: 1; }
+        .center-line { position: fixed; top: 50%; width: 80%; left: 10%; height: 1px; background: var(--gold); opacity: 0.3; pointer-events: none; }
+
+        /* Tapper Mode */
+        .tap-zone { height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+        .counter { font-size: 5rem; font-weight: 100; margin: 20px 0; }
+
+        .btn-main { background: var(--gold); color: white; border: none; padding: 12px 20px; border-radius: 50px; font-weight: bold; width: 100%; margin-top: 10px; cursor: pointer; }
     </style>
 </head>
 <body>
 
     <div id="home" class="page active">
-        <h1>My Litanies</h1>
+        <h1>Welcome, Mustafa</h1>
+        <p id="prayer-status" style="opacity: 0.6; font-size: 0.9rem;">Fetching prayer times...</p>
         <div id="roster-list"></div>
     </div>
 
@@ -30,47 +50,129 @@
         <div id="shop-list"></div>
     </div>
 
-    <div id="player" class="page">
-        <div class="success-line"></div>
-        <div id="scroll-view" class="scroll-container"></div>
+    <div id="player" class="page" style="padding: 0;">
+        <div class="center-line" id="line-visual"></div>
+        <div id="player-content" style="height: 100%;"></div>
     </div>
 
     <nav class="nav">
-        <button onclick="showPage('home')">Home</button>
-        <button onclick="showPage('shop')">Shop</button>
+        <button id="nav-home" class="active" onclick="showPage('home')">Home</button>
+        <button id="nav-shop" onclick="showPage('shop')">Shop</button>
     </nav>
 
     <script>
         const supabase = supabase.createClient(SB_URL, SB_KEY);
+        let currentLitany = [];
 
-        function showPage(id) {
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            document.getElementById(id).classList.add('active');
-            if(id === 'shop') loadShop();
-            if(id === 'home') loadRoster();
+        // --- THEME LOGIC ---
+        async function applyTheme() {
+            navigator.geolocation.getCurrentPosition(async (pos) => {
+                const res = await fetch(`https://api.aladhan.com/v1/timings?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&method=2`);
+                const { data } = await res.json();
+                const now = new Date();
+                const timeStr = now.getHours() + ":" + now.getMinutes();
+                
+                const isDay = timeStr >= data.timings.Fajr && timeStr < data.timings.Maghrib;
+                document.body.style.background = isDay ? "linear-gradient(to bottom, #FFEFBA, #FFFFFF)" : "linear-gradient(to bottom, #0F2027, #203A43, #2C5364)";
+                document.body.style.color = isDay ? "#333" : "#eee";
+                document.getElementById('prayer-status').innerText = isDay ? `Next: Maghrib at ${data.timings.Maghrib}` : `Next: Fajr at ${data.timings.Fajr}`;
+            });
         }
 
+        // --- NAVIGATION ---
+        function showPage(id) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            document.getElementById('nav-' + id).classList.add('active');
+            if(id === 'home') loadRoster();
+            if(id === 'shop') loadShop();
+            document.getElementById('line-visual').style.display = 'none';
+        }
+
+        // --- SHOP & ROSTER LOGIC ---
         async function loadShop() {
             const { data } = await supabase.from('adhkar_blocks').select('*');
-            const list = document.getElementById('shop-list');
-            list.innerHTML = data.map(item => `
+            document.getElementById('shop-list').innerHTML = data.map(item => `
                 <div class="card">
                     <h3>${item.title}</h3>
-                    <p>${item.arabic}</p>
-                    <button onclick="addToRoster('${item.id}')">Add to Litany</button>
+                    <div class="arabic">${item.arabic}</div>
+                    <button class="btn-main" onclick="addToRoster('${item.id}')">Add to My Litanies</button>
                 </div>
             `).join('');
         }
 
         async function addToRoster(blockId) {
-            const count = prompt("Enter count (e.g., 33, 99, 100):", "33");
-            if (!count) return;
-            // logic to save this specific instance to 'litany_structure'
-            alert("Added with count: " + count);
+            const litName = prompt("Name of Litany (e.g. Morning):", "General");
+            const count = prompt("How many times?", "33");
+            if(!count || !litName) return;
+
+            let { data: lit } = await supabase.from('litanies').select('id').eq('name', litName).single();
+            if(!lit) {
+                const { data: newLit } = await supabase.from('litanies').insert({ name: litName }).select().single();
+                lit = newLit;
+            }
+
+            await supabase.from('litany_structure').insert({
+                litany_id: lit.id,
+                block_id: blockId,
+                user_count: parseInt(count)
+            });
+            alert("Added!");
         }
 
-        // Initialize
-        showPage('home');
+        async function loadRoster() {
+            const { data } = await supabase.from('litanies').select('id, name, litany_structure(user_count, adhkar_blocks(*))');
+            document.getElementById('roster-list').innerHTML = data.map(lit => `
+                <div class="card">
+                    <h2>${lit.name}</h2>
+                    <p>${lit.litany_structure.length} items</p>
+                    <button class="btn-main" onclick="startFlow('${lit.id}')">🌊 Flow Mode</button>
+                    <button class="btn-main" style="background:#666; margin-top:5px;" onclick="startTap('${lit.id}')">👆 Tap Mode</button>
+                </div>
+            `).join('');
+        }
+
+        // --- PLAYER MODES ---
+        async function startFlow(id) {
+            const { data } = await supabase.from('litany_structure').select('user_count, adhkar_blocks(*)').eq('litany_id', id);
+            showPage('player');
+            document.getElementById('line-visual').style.display = 'block';
+            const container = document.getElementById('player-content');
+            container.className = 'scroll-container';
+            container.id = 'scroll-view';
+            
+            let html = '';
+            data.forEach(item => {
+                for(let i=1; i <= item.user_count; i++) {
+                    html += `
+                        <div class="dhikr-row">
+                            <div class="arabic">${item.adhkar_blocks.arabic}</div>
+                            <div style="font-size:0.8rem; opacity:0.5;">${i} / ${item.user_count}</div>
+                        </div>
+                    `;
+                }
+            });
+            container.innerHTML = html;
+            setupObserver();
+        }
+
+        function setupObserver() {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(e => {
+                    if(e.isIntersecting) {
+                        e.target.classList.add('active');
+                        if(navigator.vibrate) navigator.vibrate(10);
+                    } else {
+                        e.target.classList.remove('active');
+                    }
+                });
+            }, { threshold: 0.6 });
+            document.querySelectorAll('.dhikr-row').forEach(r => observer.observe(r));
+        }
+
+        applyTheme();
+        loadRoster();
     </script>
 </body>
 </html>
