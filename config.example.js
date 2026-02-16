@@ -1,0 +1,2 @@
+const SB_URL = "YOUR_URL_HERE";
+const SB_KEY = "YOUR_KEY_HERE";

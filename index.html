@@ -1,1 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Litany App</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <style>
+        body { font-family: sans-serif; margin: 0; background: #121212; color: white; }
+        .nav { display: flex; position: fixed; bottom: 0; width: 100%; background: #1f1f1f; padding: 15px 0; justify-content: space-around; }
+        .page { display: none; padding: 20px; padding-bottom: 80px; }
+        .page.active { display: block; }
+        .card { background: #2a2a2a; padding: 15px; border-radius: 12px; margin-bottom: 10px; }
+        .scroll-container { height: 100vh; overflow-y: scroll; scroll-snap-type: y mandatory; }
+        .dhikr-item { height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; scroll-snap-align: start; border-bottom: 1px solid #333; }
+        .success-line { position: fixed; top: 50%; width: 100%; height: 2px; background: rgba(255, 215, 0, 0.3); pointer-events: none; }
+        .arabic { font-size: 2.5rem; direction: rtl; padding: 20px; }
+    </style>
+</head>
+<body>
 
+    <div id="home" class="page active">
+        <h1>My Litanies</h1>
+        <div id="roster-list"></div>
+    </div>
+
+    <div id="shop" class="page">
+        <h1>The Shop</h1>
+        <div id="shop-list"></div>
+    </div>
+
+    <div id="player" class="page">
+        <div class="success-line"></div>
+        <div id="scroll-view" class="scroll-container"></div>
+    </div>
+
+    <nav class="nav">
+        <button onclick="showPage('home')">Home</button>
+        <button onclick="showPage('shop')">Shop</button>
+    </nav>
+
+    <script>
+        const supabase = supabase.createClient(SB_URL, SB_KEY);
+
+        function showPage(id) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            if(id === 'shop') loadShop();
+            if(id === 'home') loadRoster();
+        }
+
+        async function loadShop() {
+            const { data } = await supabase.from('adhkar_blocks').select('*');
+            const list = document.getElementById('shop-list');
+            list.innerHTML = data.map(item => `
+                <div class="card">
+                    <h3>${item.title}</h3>
+                    <p>${item.arabic}</p>
+                    <button onclick="addToRoster('${item.id}')">Add to Litany</button>
+                </div>
+            `).join('');
+        }
+
+        async function addToRoster(blockId) {
+            const count = prompt("Enter count (e.g., 33, 99, 100):", "33");
+            if (!count) return;
+            // logic to save this specific instance to 'litany_structure'
+            alert("Added with count: " + count);
+        }
+
+        // Initialize
+        showPage('home');
+    </script>
+</body>
+</html>
