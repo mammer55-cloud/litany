@@ -59,7 +59,6 @@ async function updateSunGradient() {
                 `${location}${isDay ? 'Day Mode' : 'Night Mode'} • Next: ${nextPrayer}`;
 
         } catch (err) {
-            console.error('Theme update failed:', err);
             document.getElementById('prayer-status').innerText = 'Could not fetch prayer times';
         }
     }, () => {
@@ -91,7 +90,7 @@ function bindStaticListeners() {
     document.getElementById('btn-cancel-intent').addEventListener('click', closeIntent);
     document.getElementById('btn-exit-player').addEventListener('click', exitPlayer);
 
-    // Roster: event delegation
+    // Roster: event delegation for play + delete
     document.getElementById('roster-list').addEventListener('click', e => {
         const play = e.target.closest('.btn-open-litany');
         if (play) { openIntent(play.dataset.id, play.dataset.name); return; }
@@ -108,17 +107,15 @@ function bindStaticListeners() {
         chip.classList.add('active');
     });
 
-    // New intention: show second field when label is typed
+    // New intention: reveal time + save fields when user types label
     document.getElementById('new-intent-label').addEventListener('input', e => {
         const hasText = e.target.value.trim().length > 0;
         document.getElementById('new-intent-time').classList.toggle('hidden', !hasText);
         document.getElementById('btn-save-intent').classList.toggle('hidden', !hasText);
     });
 
-    // Start fresh
     document.getElementById('btn-start-fresh').addEventListener('click', dismissAndStartFresh);
 
-    // Bottom modal overlays: close on backdrop
     document.querySelectorAll('.bottom-modal-overlay').forEach(overlay => {
         overlay.addEventListener('click', e => {
             if (e.target === overlay) closeBottomModal(overlay.id);
@@ -126,25 +123,26 @@ function bindStaticListeners() {
     });
 }
 
-// ─── ROSTER ──────────────────────────────────────────────────────────────────
+// ─── ROSTER — shows only personal (non-preset) litanies ──────────────────────
 
 async function loadRoster() {
     const list = document.getElementById('roster-list');
-    list.innerHTML = '<p class="loading-text">Loading litanies…</p>';
+    list.innerHTML = '<p class="loading-text">Loading…</p>';
     try {
         const { data, error } = await client
             .from('litanies')
             .select('id, name, description, litany_structure(count)')
+            .eq('is_preset', false)
             .order('name');
         if (error) throw error;
         allLitanies = data || [];
         if (!data || data.length === 0) {
-            list.innerHTML = '<p class="loading-text">No litanies yet. Create one above.</p>';
+            list.innerHTML = '<p class="loading-text">No litanies yet. Create one above, or add from the Shop.</p>';
             return;
         }
         list.innerHTML = data.map(lit => {
             const count = lit.litany_structure?.[0]?.count ?? 0;
-            const sub = count ? `${count} block${count !== 1 ? 's' : ''}` : 'Empty — add from Shop';
+            const sub = count ? `${count} block${count !== 1 ? 's' : ''}` : 'Empty — add blocks from Shop';
             return `
             <div class="card">
                 <div class="card-header-row">
@@ -153,15 +151,12 @@ async function loadRoster() {
                         ${lit.description ? `<p class="card-desc">${escapeHtml(lit.description)}</p>` : ''}
                         <p class="card-sub">${sub}</p>
                     </div>
-                    <button class="btn-delete-litany" data-id="${escapeHtml(lit.id)}" data-name="${escapeHtml(lit.name)}" aria-label="Delete litany">✕</button>
+                    <button class="btn-delete-litany" data-id="${escapeHtml(lit.id)}" data-name="${escapeHtml(lit.name)}" aria-label="Delete">✕</button>
                 </div>
-                <button class="btn-play btn-open-litany"
-                    data-id="${escapeHtml(lit.id)}"
-                    data-name="${escapeHtml(lit.name)}">Play</button>
+                <button class="btn-play btn-open-litany" data-id="${escapeHtml(lit.id)}" data-name="${escapeHtml(lit.name)}">Play</button>
             </div>`;
         }).join('');
     } catch (err) {
-        console.error('loadRoster failed:', err);
         list.innerHTML = '<p class="loading-text">Failed to load. Check connection.</p>';
     }
 }
@@ -171,7 +166,6 @@ async function loadRoster() {
 async function deleteLitany(id, name) {
     if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
     try {
-        // Delete child records first (in case no cascade)
         await client.from('litany_schedules').delete().eq('litany_id', id);
         await client.from('litany_sessions').delete().eq('litany_id', id);
         await client.from('litany_structure').delete().eq('litany_id', id);
@@ -179,7 +173,6 @@ async function deleteLitany(id, name) {
         if (error) throw error;
         loadRoster();
     } catch (err) {
-        console.error('deleteLitany failed:', err);
         alert('Could not delete litany.');
     }
 }
@@ -197,52 +190,59 @@ async function createLitany() {
     const name = document.getElementById('new-litany-name').value.trim();
     const desc = document.getElementById('new-litany-desc').value.trim();
     if (!name) { document.getElementById('new-litany-name').focus(); return; }
-    const { error } = await client.from('litanies').insert({ name, description: desc || null });
+    const { error } = await client.from('litanies').insert({ name, description: desc || null, is_preset: false });
     if (error) { alert('Could not create litany.'); return; }
     closeBottomModal('new-litany-modal');
     loadRoster();
 }
 
-// ─── SHOP ────────────────────────────────────────────────────────────────────
+// ─── SHOP — shows preset litanies + individual adhkar blocks ─────────────────
 
 async function loadShop() {
     const list = document.getElementById('shop-list');
     list.innerHTML = '<p class="loading-text">Loading…</p>';
     try {
-        const [{ data: litanies }, { data: blocks }] = await Promise.all([
-            client.from('litanies').select('id, name, description, litany_structure(count), litany_schedules(label, time_hint)').order('name'),
+        const [{ data: presets }, { data: blocks }] = await Promise.all([
+            client.from('litanies')
+                .select('id, name, description, litany_structure(count), litany_schedules(label, time_hint)')
+                .eq('is_preset', true)
+                .order('name'),
             client.from('adhkar_blocks').select('*').order('category').order('title')
         ]);
 
         let html = '';
 
-        // ── Featured Litanies ──
-        if (litanies && litanies.length > 0) {
-            html += `<p class="shop-cat-label">Featured Litanies</p>`;
-            html += litanies.map(lit => {
+        // ── Preset / curated litanies ──
+        if (presets && presets.length > 0) {
+            html += `<p class="shop-cat-label">Curated Litanies</p>`;
+            html += presets.map(lit => {
                 const count = lit.litany_structure?.[0]?.count ?? 0;
-                const schedules = (lit.litany_schedules || []);
-                const schedulePills = schedules.map(s =>
+                const pills = (lit.litany_schedules || []).map(s =>
                     `<span class="schedule-pill">${escapeHtml(s.label)}${s.time_hint ? ` · ${escapeHtml(s.time_hint)}` : ''}</span>`
                 ).join('');
                 return `
                 <div class="card featured-litany-card">
                     <div class="shop-card-row">
-                        <div>
+                        <div style="flex:1">
                             <h3 class="shop-item-title">${escapeHtml(lit.name)}</h3>
                             ${lit.description ? `<p class="shop-translit">${escapeHtml(lit.description)}</p>` : ''}
-                            <p class="card-sub" style="margin:4px 0 0">${count} block${count !== 1 ? 's' : ''}</p>
-                            ${schedulePills ? `<div class="schedule-pills">${schedulePills}</div>` : ''}
+                            <p class="card-sub" style="margin:4px 0 6px">${count} block${count !== 1 ? 's' : ''}</p>
+                            ${pills ? `<div class="schedule-pills">${pills}</div>` : ''}
                         </div>
-                        <button class="btn-play btn-open-litany btn-featured-play"
-                            data-id="${escapeHtml(lit.id)}"
-                            data-name="${escapeHtml(lit.name)}">Play</button>
+                        <div class="featured-actions">
+                            <button class="btn-play btn-featured-play btn-clone-preset"
+                                data-id="${escapeHtml(lit.id)}"
+                                data-name="${escapeHtml(lit.name)}">+ Add</button>
+                            <button class="btn-add-shop btn-play-preset"
+                                data-id="${escapeHtml(lit.id)}"
+                                data-name="${escapeHtml(lit.name)}">Play</button>
+                        </div>
                     </div>
                 </div>`;
             }).join('');
         }
 
-        // ── Adhkar Library ──
+        // ── Individual adhkar blocks ──
         if (blocks && blocks.length > 0) {
             const grouped = {};
             blocks.forEach(item => {
@@ -270,30 +270,62 @@ async function loadShop() {
 
         list.innerHTML = html || '<p class="loading-text">Nothing here yet.</p>';
 
-        // Wire up featured play buttons
-        list.querySelectorAll('.btn-open-litany').forEach(btn => {
+        // Wire preset buttons after render
+        list.querySelectorAll('.btn-clone-preset').forEach(btn => {
+            btn.addEventListener('click', () => clonePresetToMyLitanies(btn.dataset.id, btn.dataset.name));
+        });
+        list.querySelectorAll('.btn-play-preset').forEach(btn => {
             btn.addEventListener('click', () => openIntent(btn.dataset.id, btn.dataset.name));
         });
 
     } catch (err) {
-        console.error('loadShop failed:', err);
         list.innerHTML = '<p class="loading-text">Failed to load. Check connection.</p>';
     }
 }
 
-// ─── ADD TO LITANY ────────────────────────────────────────────────────────────
+// Clone a curated litany into the user's personal collection
+async function clonePresetToMyLitanies(presetId, presetName) {
+    const name = prompt(`Add to My Litanies as:`, presetName);
+    if (!name) return;
+
+    // 1. Create new personal litany
+    const { data: newLit, error: litErr } = await client
+        .from('litanies').insert({ name, is_preset: false }).select().single();
+    if (litErr) { alert('Could not add litany.'); return; }
+
+    // 2. Copy structure blocks
+    const { data: structure } = await client
+        .from('litany_structure').select('block_id, order_index, user_count')
+        .eq('litany_id', presetId);
+
+    if (structure && structure.length > 0) {
+        await client.from('litany_structure').insert(
+            structure.map(s => ({
+                litany_id:   newLit.id,
+                block_id:    s.block_id,
+                order_index: s.order_index,
+                user_count:  s.user_count
+            }))
+        );
+    }
+
+    showToast(`"${name}" added to My Litanies`);
+    showPage('home');
+}
+
+// ─── ADD INDIVIDUAL BLOCK TO LITANY ──────────────────────────────────────────
 
 async function openAddModal(blockId, blockTitle) {
     pendingBlockId    = blockId;
     pendingBlockTitle = blockTitle;
 
-    const { data } = await client.from('litanies').select('id, name').order('name');
+    const { data } = await client.from('litanies').select('id, name').eq('is_preset', false).order('name');
     allLitanies = data || [];
 
     const select = document.getElementById('add-litany-select');
     select.innerHTML = allLitanies.length
         ? allLitanies.map(l => `<option value="${escapeHtml(l.id)}">${escapeHtml(l.name)}</option>`).join('')
-        : '<option disabled selected>No litanies — create one on Home first</option>';
+        : '<option disabled selected>No personal litanies — create one on Home first</option>';
 
     document.getElementById('add-modal-title').innerText = `Add "${blockTitle}"`;
     document.getElementById('add-count').value = '33';
@@ -325,12 +357,8 @@ async function confirmAddToLitany() {
 
 // ─── BOTTOM MODAL HELPERS ─────────────────────────────────────────────────────
 
-function openBottomModal(id) {
-    document.getElementById(id).classList.add('show');
-}
-function closeBottomModal(id) {
-    document.getElementById(id).classList.remove('show');
-}
+function openBottomModal(id)  { document.getElementById(id).classList.add('show'); }
+function closeBottomModal(id) { document.getElementById(id).classList.remove('show'); }
 
 // ─── INTENT MODAL ────────────────────────────────────────────────────────────
 
@@ -338,7 +366,6 @@ async function openIntent(id, name) {
     activeLitanyId = id;
     selectedLabel  = 'Freestyle';
 
-    // Reset add-intention form
     document.getElementById('new-intent-label').value = '';
     document.getElementById('new-intent-time').value  = '';
     document.getElementById('new-intent-time').classList.add('hidden');
@@ -347,12 +374,10 @@ async function openIntent(id, name) {
     document.getElementById('intent-title').innerText = name;
     document.getElementById('intent-modal').style.display = 'flex';
 
-    // Check unfinished session
     try {
         const { data: sess } = await client
             .from('litany_sessions').select('*')
             .eq('litany_id', id).eq('is_completed', false).maybeSingle();
-
         const resumeDiv = document.getElementById('resume-section');
         if (sess) {
             resumeDiv.style.display = 'block';
@@ -362,13 +387,11 @@ async function openIntent(id, name) {
             resumeDiv.style.display = 'none';
             activeSession = null;
         }
-    } catch (err) { console.error('Session check failed:', err); }
+    } catch (err) {}
 
-    // Load schedules + Freestyle chip
     try {
         const { data: sch } = await client
             .from('litany_schedules').select('*').eq('litany_id', id);
-
         const grid = document.getElementById('intent-options');
         const chips = (sch || []).map(s =>
             `<div class="intent-chip" data-label="${escapeHtml(s.label)}">
@@ -378,7 +401,7 @@ async function openIntent(id, name) {
         );
         chips.push(`<div class="intent-chip" data-label="Freestyle">Freestyle<br><small>Anytime</small></div>`);
         grid.innerHTML = chips.join('');
-    } catch (err) { console.error('Schedule load failed:', err); }
+    } catch (err) {}
 }
 
 function closeIntent() {
@@ -393,22 +416,16 @@ async function saveNewIntention() {
     if (!label || !activeLitanyId) return;
 
     const { error } = await client.from('litany_schedules').insert({
-        litany_id: activeLitanyId,
-        label,
-        time_hint: timeHint || null
+        litany_id: activeLitanyId, label, time_hint: timeHint || null
     });
     if (error) { alert('Could not save intention.'); return; }
 
-    // Reset fields
     document.getElementById('new-intent-label').value = '';
     document.getElementById('new-intent-time').value  = '';
     document.getElementById('new-intent-time').classList.add('hidden');
     document.getElementById('btn-save-intent').classList.add('hidden');
 
-    // Reload chips
-    const { data: sch } = await client
-        .from('litany_schedules').select('*').eq('litany_id', activeLitanyId);
-    const grid = document.getElementById('intent-options');
+    const { data: sch } = await client.from('litany_schedules').select('*').eq('litany_id', activeLitanyId);
     const chips = (sch || []).map(s =>
         `<div class="intent-chip" data-label="${escapeHtml(s.label)}">
             ${escapeHtml(s.label)}
@@ -416,7 +433,7 @@ async function saveNewIntention() {
          </div>`
     );
     chips.push(`<div class="intent-chip" data-label="Freestyle">Freestyle<br><small>Anytime</small></div>`);
-    grid.innerHTML = chips.join('');
+    document.getElementById('intent-options').innerHTML = chips.join('');
     showToast(`Intention "${label}" saved`);
 }
 
@@ -424,20 +441,15 @@ async function saveNewIntention() {
 
 async function dismissAndStartFresh() {
     if (activeSession) {
-        await client.from('litany_sessions')
-            .update({ is_completed: true })
-            .eq('id', activeSession.id);
+        await client.from('litany_sessions').update({ is_completed: true }).eq('id', activeSession.id);
         activeSession = null;
     }
     document.getElementById('resume-section').style.display = 'none';
 }
 
 async function createNewSession(mode) {
-    // If there's still an active unfinished session, dismiss it
     if (activeSession) {
-        await client.from('litany_sessions')
-            .update({ is_completed: true })
-            .eq('id', activeSession.id);
+        await client.from('litany_sessions').update({ is_completed: true }).eq('id', activeSession.id);
         activeSession = null;
     }
     try {
@@ -448,7 +460,6 @@ async function createNewSession(mode) {
         if (error) throw error;
         launchSession(data);
     } catch (err) {
-        console.error('createNewSession failed:', err);
         alert('Could not start session. Please try again.');
     }
 }
@@ -457,8 +468,9 @@ async function createNewSession(mode) {
 
 async function launchSession(session) {
     closeIntent();
-    document.getElementById('main-nav').classList.add('hidden');
+    // Show player page first, then hide nav (showPage re-shows nav, so hide after)
     showPage('player');
+    document.getElementById('main-nav').classList.add('hidden');
 
     try {
         const { data, error } = await client
@@ -470,14 +482,12 @@ async function launchSession(session) {
 
         if (!data || data.length === 0) {
             alert('This litany has no blocks yet. Add some from the Shop first.');
-            exitPlayer();
-            return;
+            exitPlayer(); return;
         }
 
         if (session.mode === 'flow') runFlow(data, session);
         else runTap(data, session);
     } catch (err) {
-        console.error('launchSession failed:', err);
         alert('Could not load litany content. Please try again.');
         exitPlayer();
     }
@@ -488,8 +498,11 @@ async function launchSession(session) {
 function runFlow(data, session) {
     if (flowObserver) { flowObserver.disconnect(); flowObserver = null; }
 
+    // Show center line for flow, hide tap view
+    document.querySelector('.center-line').style.display = '';
     const view = document.getElementById('player-view');
-    view.style.height = '100%';
+    view.style.height = '100vh';
+    view.style.overflow = 'scroll';
     view.innerHTML = '';
 
     const tapView = document.getElementById('tap-view');
@@ -497,11 +510,11 @@ function runFlow(data, session) {
 
     data.forEach((item, bIdx) => {
         for (let i = 1; i <= item.user_count; i++) {
-            const row       = document.createElement('div');
-            row.className   = 'dhikr-row';
+            const row     = document.createElement('div');
+            row.className = 'dhikr-row';
             row.dataset.idx = bIdx;
             row.dataset.cnt = i;
-            row.innerHTML   = `
+            row.innerHTML = `
                 <div class="arabic">${escapeHtml(item.adhkar_blocks.arabic)}</div>
                 <div class="dhikr-counter">${i} / ${item.user_count}</div>
             `;
@@ -510,15 +523,10 @@ function runFlow(data, session) {
     });
 
     const debouncedSave = debounce(saveProgress, 400);
-
     flowObserver = new IntersectionObserver((entries) => {
         entries.forEach(e => {
-            if (e.isIntersecting) {
-                e.target.classList.add('active');
-                debouncedSave(session.id, e.target.dataset.idx, e.target.dataset.cnt);
-            } else {
-                e.target.classList.remove('active');
-            }
+            e.target.classList.toggle('active', e.isIntersecting);
+            if (e.isIntersecting) debouncedSave(session.id, e.target.dataset.idx, e.target.dataset.cnt);
         });
     }, { threshold: 0.6 });
 
@@ -530,9 +538,11 @@ function runFlow(data, session) {
 function runTap(data, session) {
     if (flowObserver) { flowObserver.disconnect(); flowObserver = null; }
 
-    // Collapse the flow view so it doesn't cause scroll
+    // Hide flow-specific elements
+    document.querySelector('.center-line').style.display = 'none';
     const view = document.getElementById('player-view');
     view.style.height = '0';
+    view.style.overflow = 'hidden';
     view.innerHTML = '';
 
     let tapView = document.getElementById('tap-view');
@@ -554,8 +564,7 @@ function runTap(data, session) {
                     <p class="complete-icon">✓</p>
                     <p class="complete-label">Litany complete</p>
                     <button class="btn-play btn-done">Done</button>
-                </div>
-            `;
+                </div>`;
             tapView.querySelector('.btn-done').addEventListener('click', exitPlayer);
             return;
         }
@@ -566,11 +575,11 @@ function runTap(data, session) {
 
         tapView.innerHTML = `
             <p class="tap-progress">Block ${blockIndex + 1} of ${data.length}</p>
-            <div class="arabic">${escapeHtml(block.arabic)}</div>
+            <div class="arabic tap-arabic">${escapeHtml(block.arabic)}</div>
             ${block.translation ? `<p class="tap-translation">${escapeHtml(block.translation)}</p>` : ''}
             <div class="tap-counter" id="tap-count">${total - count}</div>
             <p class="tap-total">remaining of ${total}</p>
-            <button class="btn-tap" id="btn-tap">☽</button>
+            <button class="btn-tap" id="btn-tap"></button>
         `;
 
         document.getElementById('btn-tap').addEventListener('click', () => {
@@ -597,22 +606,23 @@ async function saveProgress(sId, bIdx, cnt) {
         await client.from('litany_sessions')
             .update({ current_block_index: bIdx, current_count: cnt, last_active: new Date().toISOString() })
             .eq('id', sId);
-    } catch (err) { console.error('saveProgress failed:', err); }
+    } catch (_) {}
 }
 
 async function markCompleted(sId) {
-    try {
-        await client.from('litany_sessions').update({ is_completed: true }).eq('id', sId);
-    } catch (err) { console.error('markCompleted failed:', err); }
+    try { await client.from('litany_sessions').update({ is_completed: true }).eq('id', sId); } catch (_) {}
 }
 
 function exitPlayer() {
     if (flowObserver) { flowObserver.disconnect(); flowObserver = null; }
+
+    // Reset player state
     const tapView = document.getElementById('tap-view');
     if (tapView) tapView.style.display = 'none';
-    // Restore flow view height for next use
     const view = document.getElementById('player-view');
-    if (view) view.style.height = '';
+    if (view) { view.style.height = ''; view.style.overflow = ''; view.innerHTML = ''; }
+    document.querySelector('.center-line').style.display = '';
+
     showPage('home');
 }
 
