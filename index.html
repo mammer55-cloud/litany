@@ -10,58 +10,54 @@
 </head>
 <body class="mode-night">
 
-    <div class="orb" id="orb-sun"  style="background: #f1c40f; top: -10%; right: -10%;"></div>
-    <div class="orb" id="orb-moon" style="background: #3498db; bottom: -10%; left: -10%;"></div>
+    <div class="orb orb-sun"  id="orb-sun"></div>
+    <div class="orb orb-moon" id="orb-moon"></div>
 
     <!-- Intent Modal -->
     <div id="intent-modal">
         <div class="intent-box">
-            <h2 id="intent-title" style="font-weight:200; margin-bottom:5px;">Launch Litany</h2>
-            <p style="opacity:0.5; font-size:0.8rem;">Select your session intent</p>
+            <h2 id="intent-title" class="intent-heading">Launch Litany</h2>
+            <p class="intent-sub">Select your session intent</p>
 
             <div class="intent-grid" id="intent-options"></div>
 
-            <div id="resume-section" style="display:none; margin-bottom:20px;">
-                <p style="color:var(--gold); font-size:0.7rem; text-transform:uppercase; letter-spacing:1px;">Unfinished Session Found</p>
-                <button class="btn-play" style="background:white; color:#000;" id="btn-resume">Resume Progress</button>
+            <div id="resume-section" class="resume-section hidden">
+                <p class="resume-label">Unfinished Session Found</p>
+                <button class="btn-play btn-resume-style" id="btn-resume">Resume Progress</button>
             </div>
 
-            <div style="display:flex; gap:10px;">
+            <div class="intent-actions">
                 <button class="btn-play" id="btn-start-flow">Flow</button>
-                <button class="btn-play" style="background:rgba(255,255,255,0.1); color:white;" id="btn-start-tap">Tap</button>
+                <button class="btn-play btn-secondary" id="btn-start-tap">Tap</button>
             </div>
-            <button onclick="closeIntent()" style="background:none; border:none; color:white; margin-top:20px; opacity:0.4; cursor:pointer;">Cancel</button>
+            <button class="btn-cancel" id="btn-cancel-intent">Cancel</button>
         </div>
     </div>
 
     <!-- Home Page -->
     <div id="home" class="page active">
-        <h1 style="font-weight:200;">My Litanies</h1>
-        <p id="prayer-status" style="opacity:0.5; font-size:0.8rem;">Connecting to sun…</p>
+        <h1 class="page-title">My Litanies</h1>
+        <p id="prayer-status" class="prayer-status">Connecting to sun…</p>
         <div id="roster-list"></div>
     </div>
 
     <!-- Shop Page -->
     <div id="shop" class="page">
-        <h1 style="font-weight:200;">Shop</h1>
+        <h1 class="page-title">Shop</h1>
         <div id="shop-list"></div>
     </div>
 
     <!-- Player Page -->
-    <div id="player" class="page" style="padding:0; background:#000;">
+    <div id="player" class="page player-page">
         <div class="center-line"></div>
         <div id="player-view"></div>
-        <button
-            onclick="exitPlayer()"
-            style="position:fixed; top:25px; right:25px; z-index:4000; background:rgba(255,255,255,0.1); border:none; color:white; padding:10px 15px; border-radius:15px; backdrop-filter:blur(10px); cursor:pointer;"
-            aria-label="Exit player"
-        >✕</button>
+        <button id="btn-exit-player" class="btn-exit" aria-label="Exit player">✕</button>
     </div>
 
     <!-- Bottom Navigation -->
     <nav class="nav" id="main-nav" aria-label="Main navigation">
-        <button id="nav-home" class="active" onclick="showPage('home')" aria-label="My Litanies">Litanies</button>
-        <button id="nav-shop"               onclick="showPage('shop')" aria-label="Shop">Shop</button>
+        <button id="nav-home" class="active" aria-label="My Litanies">Litanies</button>
+        <button id="nav-shop" aria-label="Shop">Shop</button>
     </nav>
 
     <script src="js/app.js"></script>

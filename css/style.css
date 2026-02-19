@@ -20,6 +20,7 @@ body {
 body.mode-day  { --text: #2d3436; --glass: rgba(0, 0, 0, 0.05); --border: rgba(0, 0, 0, 0.1); }
 body.mode-night { --text: #ffffff; --glass: rgba(255, 255, 255, 0.08); --border: rgba(255, 255, 255, 0.15); }
 
+/* Ambient orbs */
 .orb {
     position: fixed;
     width: 400px;
@@ -30,11 +31,17 @@ body.mode-night { --text: #ffffff; --glass: rgba(255, 255, 255, 0.08); --border:
     opacity: 0.3;
     transition: all 3s ease;
 }
+.orb-sun  { background: #f1c40f; top: -10%; right: -10%; }
+.orb-moon { background: #3498db; bottom: -10%; left: -10%; }
 
 /* Pages */
 .page { display: none; height: 100vh; overflow-y: auto; padding: 40px 20px 140px 20px; box-sizing: border-box; }
 .page.active { display: block; animation: fadeIn 0.5s ease forwards; }
+.page-title { font-weight: 200; margin: 0 0 4px 0; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* Prayer status line */
+.prayer-status { opacity: 0.5; font-size: 0.8rem; margin: 0 0 24px 0; }
 
 /* Navigation */
 .nav {
@@ -78,6 +85,8 @@ body.mode-night { --text: #ffffff; --glass: rgba(255, 255, 255, 0.08); --border:
     text-align: center;
     color: white;
 }
+.intent-heading { font-weight: 200; margin: 0 0 5px 0; }
+.intent-sub { opacity: 0.5; font-size: 0.8rem; margin: 0 0 4px 0; }
 .intent-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 25px 0; }
 .intent-chip {
     background: rgba(255, 255, 255, 0.05);
@@ -89,6 +98,25 @@ body.mode-night { --text: #ffffff; --glass: rgba(255, 255, 255, 0.08); --border:
     font-size: 0.8rem;
 }
 .intent-chip.active { background: var(--gold); color: black; border-color: var(--gold); }
+.intent-actions { display: flex; gap: 10px; }
+.btn-cancel {
+    background: none;
+    border: none;
+    color: white;
+    margin-top: 20px;
+    opacity: 0.4;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+/* Resume section */
+.resume-section { margin-bottom: 20px; }
+.resume-section.hidden { display: none; }
+.resume-label { color: var(--gold); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; }
+.btn-resume-style { background: white; color: #000; }
+
+/* Secondary button variant */
+.btn-secondary { background: rgba(255, 255, 255, 0.1); color: white; }
 
 /* Cards */
 .card {
@@ -100,12 +128,37 @@ body.mode-night { --text: #ffffff; --glass: rgba(255, 255, 255, 0.08); --border:
     border: 1px solid var(--border);
     position: relative;
 }
+.card-title { font-weight: 200; margin: 0 0 15px 0; }
+
+/* Shop placeholder */
+.shop-placeholder { text-align: center; padding: 50px 25px; }
+.shop-icon { font-size: 2rem; margin: 0 0 15px 0; }
+.shop-coming-soon { font-weight: 200; font-size: 1.1rem; margin: 0 0 8px 0; }
+.shop-subtitle { opacity: 0.4; font-size: 0.8rem; margin: 0; }
+
 .arabic { font-family: 'Amiri', serif; font-size: 2.3rem; direction: rtl; text-align: center; margin: 15px 0; line-height: 1.7; color: inherit; }
-.btn-play { background: var(--gold); color: #000; border: none; padding: 16px; border-radius: 22px; font-weight: 600; width: 100%; cursor: pointer; font-size: 1rem; }
+.btn-play { background: var(--gold); color: #000; border: none; padding: 16px; border-radius: 22px; font-weight: 600; width: 100%; cursor: pointer; font-size: 1rem; font-family: inherit; }
 .btn-play:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* Loading state */
 .loading-text { opacity: 0.4; font-size: 0.85rem; text-align: center; padding: 40px 0; }
+
+/* Player page */
+.player-page { padding: 0; background: #000; }
+.btn-exit {
+    position: fixed;
+    top: 25px;
+    right: 25px;
+    z-index: 4000;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: white;
+    padding: 10px 15px;
+    border-radius: 15px;
+    backdrop-filter: blur(10px);
+    cursor: pointer;
+    font-family: inherit;
+}
 
 /* Flow Player */
 #player-view { height: 100vh; overflow-y: scroll; scroll-snap-type: y mandatory; -webkit-overflow-scrolling: touch; }
@@ -123,6 +176,7 @@ body.mode-night { --text: #ffffff; --glass: rgba(255, 255, 255, 0.08); --border:
     box-sizing: border-box;
 }
 .dhikr-row.active { opacity: 1; transform: scale(1.05); }
+.dhikr-counter { opacity: 0.4; }
 .center-line {
     position: fixed;
     top: 50%; left: 10%;
@@ -159,6 +213,7 @@ body.mode-night { --text: #ffffff; --glass: rgba(255, 255, 255, 0.08); --border:
     letter-spacing: 1px;
     margin-bottom: 30px;
 }
+.tap-translation { opacity: 0.5; font-size: 0.8rem; margin: 0 0 10px 0; }
 .btn-tap {
     width: 160px;
     height: 160px;
@@ -170,5 +225,12 @@ body.mode-night { --text: #ffffff; --glass: rgba(255, 255, 255, 0.08); --border:
     cursor: pointer;
     transition: transform 0.1s ease, box-shadow 0.1s ease;
     box-shadow: 0 0 40px rgba(243, 156, 18, 0.3);
+    font-family: inherit;
 }
 .btn-tap:active { transform: scale(0.93); box-shadow: 0 0 20px rgba(243, 156, 18, 0.2); }
+
+/* Complete screen */
+.complete-screen { text-align: center; }
+.complete-icon { font-size: 2rem; margin: 0 0 15px 0; }
+.complete-label { font-weight: 200; font-size: 1.3rem; }
+.btn-done { margin-top: 30px; width: auto; padding: 16px 40px; }
