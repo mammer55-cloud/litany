@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Litany | Shadhili Zen</title>
+    <title>Litany</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@200;400;600&family=Amiri&display=swap');
@@ -13,25 +13,28 @@
         .orb { position: fixed; width: 300px; height: 300px; border-radius: 50%; filter: blur(90px); z-index: -1; opacity: 0.25; animation: float 15s infinite alternate; }
         @keyframes float { from { transform: translate(-20%, -20%); } to { transform: translate(20%, 20%); } }
 
+        /* Pages */
         .page { display: none; height: 100vh; overflow-y: auto; padding: 40px 20px 120px 20px; box-sizing: border-box; }
-        .page.active { display: block; animation: fadeIn 0.4s ease forwards; }
+        .page.active { display: block; animation: fadeIn 0.4s ease; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
+        /* Navigation */
         .nav { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); width: 80%; display: flex; background: rgba(30, 30, 30, 0.7); backdrop-filter: blur(25px); padding: 12px; border-radius: 40px; border: 1px solid rgba(255,255,255,0.1); z-index: 1000; }
         .nav button { flex: 1; background: none; border: none; color: white; opacity: 0.4; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; cursor: pointer; }
         .nav button.active { opacity: 1; color: var(--gold); }
 
-        .card { background: var(--glass); backdrop-filter: blur(15px); border-radius: 28px; padding: 25px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 10px 40px rgba(0,0,0,0.4); position: relative; }
+        /* Cards */
+        .card { background: var(--glass); backdrop-filter: blur(15px); border-radius: 28px; padding: 25px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 10px 40px rgba(0,0,0,0.4); }
         .arabic { font-family: 'Amiri', serif; font-size: 2.2rem; direction: rtl; text-align: center; margin: 15px 0; line-height: 1.6; }
-        .btn-main { background: var(--gold); color: #000; border: none; padding: 14px; border-radius: 20px; font-weight: 600; width: 100%; cursor: pointer; }
+        .btn-main { background: var(--gold); color: #000; border: none; padding: 14px; border-radius: 20px; font-weight: 600; width: 100%; cursor: pointer; margin-top: 10px; }
 
-        /* GUI Modal - Enhanced with Dropdown */
+        /* Modal GUI */
         #gui-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); backdrop-filter: blur(15px); z-index: 2000; display: none; align-items: center; justify-content: center; }
         .modal-content { background: #1a1a1a; padding: 35px; border-radius: 35px; width: 85%; max-width: 400px; text-align: center; border: 1px solid rgba(243, 156, 18, 0.3); }
         select, input { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 14px; border-radius: 15px; width: 100%; margin: 10px 0; font-size: 1rem; box-sizing: border-box; }
 
-        /* Flow Player Styles */
-        #player-content { height: 100vh; overflow-y: scroll; scroll-snap-type: y mandatory; -webkit-overflow-scrolling: touch; }
+        /* Player View */
+        #player-view { height: 100vh; overflow-y: scroll; scroll-snap-type: y mandatory; -webkit-overflow-scrolling: touch; }
         .dhikr-row { height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; scroll-snap-align: center; opacity: 0.15; transition: 0.7s; text-align: center; padding: 30px; box-sizing: border-box; }
         .dhikr-row.active { opacity: 1; transform: scale(1.05); }
         .center-line { position: fixed; top: 50%; left: 10%; width: 80%; height: 1px; background: linear-gradient(90deg, transparent, var(--gold), transparent); opacity: 0.5; pointer-events: none; z-index: 5; }
@@ -45,17 +48,13 @@
     <div id="gui-modal">
         <div class="modal-content">
             <h2 style="font-weight: 200; color: var(--gold); margin-top: 0;">Add to Roster</h2>
-            
-            <p style="font-size: 0.7rem; opacity: 0.5; margin-bottom: 5px; text-align: left;">Choose existing litany:</p>
+            <p style="font-size: 0.7rem; opacity: 0.5; margin-bottom: 5px; text-align: left;">Existing Litany:</p>
             <select id="litany-dropdown"></select>
-            
-            <p style="font-size: 0.7rem; opacity: 0.5; margin-top: 15px; margin-bottom: 5px; text-align: left;">Or create new:</p>
-            <input type="text" id="litany-name-new" placeholder="Enter new name...">
-            
-            <input type="number" id="litany-count" placeholder="Goal count (e.g., 99)">
-            
-            <button class="btn-main" id="confirm-add" style="margin-top: 20px;">Confirm Addition</button>
-            <button onclick="closeModal()" style="background:none; border:none; color:white; margin-top:15px; opacity:0.5; cursor:pointer;">Cancel</button>
+            <p style="font-size: 0.7rem; opacity: 0.5; margin-top: 15px; margin-bottom: 5px; text-align: left;">New Litany:</p>
+            <input type="text" id="litany-name-new" placeholder="Enter name...">
+            <input type="number" id="litany-count" placeholder="Count (e.g., 99)">
+            <button class="btn-main" id="confirm-add">Confirm</button>
+            <button onclick="closeModal()" style="background:none; border:none; color:white; margin-top:15px; opacity:0.5;">Cancel</button>
         </div>
     </div>
 
@@ -72,7 +71,7 @@
 
     <div id="player" class="page" style="padding: 0; background: black;">
         <div class="center-line" id="line-visual" style="display:none;"></div>
-        <div id="player-content"></div>
+        <div id="player-view"></div>
     </div>
 
     <nav class="nav">
@@ -81,6 +80,7 @@
     </nav>
 
     <script>
+        // Use the "client" identifier to avoid global conflicts
         const SB_URL = "https://qtmbkihjgdtdzjafcpji.supabase.co";
         const SB_KEY = "sb_publishable_v2c41Jbqj-xNtdLMdM__zA_zYc5iQxb";
         const client = supabase.createClient(SB_URL, SB_KEY);
@@ -93,20 +93,25 @@
                 const res = await fetch(`https://api.aladhan.com/v1/timings?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&method=2`);
                 const { data } = await res.json();
                 const now = new Date();
-                const h = now.getHours().toString().padStart(2,'0'), m = now.getMinutes().toString().padStart(2,'0');
-                const timeStr = `${h}:${m}`;
+                const timeStr = now.getHours().toString().padStart(2,'0') + ":" + now.getMinutes().toString().padStart(2,'0');
                 const isDay = timeStr >= data.timings.Fajr && timeStr < data.timings.Maghrib;
                 document.body.style.background = isDay ? "linear-gradient(to bottom, #FFF9E6, #FFFFFF)" : "#0a0a0c";
                 document.body.style.color = isDay ? "#2d3436" : "#f1f2f6";
-                document.getElementById('prayer-status').innerText = isDay ? `Day: Maghrib at ${data.timings.Maghrib}` : `Night: Fajr at ${data.timings.Fajr}`;
+                document.getElementById('prayer-status').innerText = isDay ? `Day Mode • Next: Maghrib at ${data.timings.Maghrib}` : `Night Mode • Next: Fajr at ${data.timings.Fajr}`;
             });
         }
 
+        // FIX: Added safety check for nav buttons to prevent crashing
         function showPage(id) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
-            document.getElementById(id).classList.add('active');
-            document.getElementById('nav-' + id).classList.add('active');
+            
+            const targetPage = document.getElementById(id);
+            if (targetPage) targetPage.classList.add('active');
+            
+            const navBtn = document.getElementById('nav-' + id);
+            if (navBtn) navBtn.classList.add('active');
+            
             if(id === 'home') loadRoster(); else if(id === 'shop') loadShop();
             document.getElementById('line-visual').style.display = 'none';
         }
@@ -117,7 +122,7 @@
                 <div class="card">
                     <div class="arabic">${item.arabic}</div>
                     <div style="font-size:0.8rem; opacity:0.6; text-align:center;">${item.title}</div>
-                    <button class="btn-main" style="margin-top:15px;" onclick="openModal('${item.id}')">Add to Roster</button>
+                    <button class="btn-main" onclick="openModal('${item.id}')">Add to Roster</button>
                 </div>
             `).join('');
         }
@@ -139,7 +144,7 @@
             const litName = existing || manual || "Daily";
             const count = parseInt(document.getElementById('litany-count').value) || 33;
 
-            let { data: lit } = await client.from('litanies').select('id').eq('name', litName).single();
+            let { data: lit } = await client.from('litanies').select('id').eq('name', litName).maybeSingle();
             if(!lit) {
                 const { data: nLit } = await client.from('litanies').insert({ name: litName }).select().single();
                 lit = nLit;
@@ -166,7 +171,7 @@
             const { data } = await client.from('litany_structure').select('order_index, user_count, adhkar_blocks(*)').eq('litany_id', id).order('order_index');
             showPage('player');
             document.getElementById('line-visual').style.display = 'block';
-            const container = document.getElementById('player-content');
+            const container = document.getElementById('player-view');
             container.innerHTML = ''; 
             
             data.forEach(item => {
@@ -178,7 +183,6 @@
                 }
             });
 
-            // Set up Observer for the new rows
             const obs = new IntersectionObserver((es) => {
                 es.forEach(e => { if(e.isIntersecting) { e.target.classList.add('active'); if(navigator.vibrate) navigator.vibrate(15); } else e.target.classList.remove('active'); });
             }, { threshold: 0.6 });
@@ -189,9 +193,11 @@
             const { data } = await client.from('litany_structure').select('order_index, user_count, adhkar_blocks(*)').eq('litany_id', id).order('order_index');
             let idx = 0, count = 1;
             showPage('player');
+            const container = document.getElementById('player-view');
+            
             const render = () => {
                 const item = data[idx];
-                document.getElementById('player-content').innerHTML = `
+                container.innerHTML = `
                     <div class="dhikr-row active" style="height:100vh" onclick="tap()">
                         <div style="opacity:0.5; font-size:0.7rem; margin-bottom:10px;">${item.adhkar_blocks.title}</div>
                         <div class="arabic">${item.adhkar_blocks.arabic}</div>
