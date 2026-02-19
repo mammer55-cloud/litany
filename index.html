@@ -1,333 +1,69 @@
-<!--
-  ============================================================
-  SUPABASE DATABASE SCHEMA — CURRENT STATE
-  Last updated: 2026-02-19
-  ⚠️ Always update this comment block whenever changes are
-     made to the Supabase database schema.
-  ============================================================
-
-  TABLE: public.my_litanies
-  --------------------------
-  id          SERIAL          PRIMARY KEY
-  name        TEXT            NULL
-  created_at  TIMESTAMPTZ     NULL  DEFAULT now()
-
-  TABLE: public.litanies
-  --------------------------
-  id             UUID        PRIMARY KEY  DEFAULT gen_random_uuid()
-  name           TEXT        NOT NULL
-  description    TEXT        NULL
-  scheduled_time TEXT        NULL
-
-  TABLE: public.adhkar_library
-  --------------------------
-  id               SERIAL   PRIMARY KEY
-  arabic_text      TEXT     NULL
-  transliteration  TEXT     NULL
-  translation      TEXT     NULL
-  default_count    INTEGER  NULL
-  source_reference TEXT     NULL
-  category         TEXT     NULL
-
-  TABLE: public.adhkar_blocks
-  --------------------------
-  id              UUID    PRIMARY KEY  DEFAULT gen_random_uuid()
-  title           TEXT    NOT NULL
-  arabic          TEXT    NOT NULL
-  transliteration TEXT    NULL
-  translation     TEXT    NULL
-  category        TEXT    NULL
-
-  TABLE: public.litany_structure
-  --------------------------
-  id           SERIAL   PRIMARY KEY
-  litany_id    UUID     NULL  → FK → litanies(id)  ON DELETE CASCADE
-  block_id     UUID     NULL  → FK → adhkar_blocks(id)
-  order_index  INTEGER  NULL
-  user_count   INTEGER  NULL
-
-  TABLE: public.litany_sessions
-  --------------------------
-  id                  UUID        PRIMARY KEY  DEFAULT gen_random_uuid()
-  litany_id           UUID        NULL  → FK → litanies(id)  ON DELETE CASCADE
-  current_block_index INTEGER     NULL  DEFAULT 0
-  current_count       INTEGER     NULL  DEFAULT 0
-  is_completed        BOOLEAN     NULL  DEFAULT false
-  mode                TEXT        NULL
-  last_active         TIMESTAMPTZ NULL  DEFAULT now()
-  session_label       TEXT        NULL  DEFAULT 'Freestyle'
-  start_time          TIMESTAMPTZ NULL  DEFAULT now()
-
-  TABLE: public.litany_schedules
-  --------------------------
-  id         UUID        PRIMARY KEY  DEFAULT gen_random_uuid()
-  litany_id  UUID        NULL  → FK → litanies(id)  ON DELETE CASCADE
-  label      TEXT        NOT NULL
-  time_hint  TEXT        NULL
-  created_at TIMESTAMPTZ NULL  DEFAULT now()
-
-  TABLE: public.litany_items
-  --------------------------
-  litany_id  INTEGER  NULL  → FK → my_litanies(id)
-  dhikr_id   INTEGER  NULL  → FK → adhkar_library(id)
-  position   INTEGER  NULL
-  (No primary key defined)
-
-  ============================================================
-  RELATIONSHIPS SUMMARY
-  ============================================================
-  litany_structure.litany_id  → litanies.id         (CASCADE DELETE)
-  litany_structure.block_id   → adhkar_blocks.id
-  litany_sessions.litany_id   → litanies.id          (CASCADE DELETE)
-  litany_schedules.litany_id  → litanies.id          (CASCADE DELETE)
-  litany_items.litany_id      → my_litanies.id
-  litany_items.dhikr_id       → adhkar_library.id
-
-  ============================================================
-  NOTES
-  ============================================================
-  - There are TWO separate litany tables:
-      • my_litanies  (SERIAL id, integer-based)
-      • litanies     (UUID id)
-    litany_items references my_litanies, while litany_structure,
-    litany_sessions, and litany_schedules all reference litanies.
-  - All tables use TABLESPACE pg_default.
-  ============================================================
--->
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Litany</title>
+    <link rel="stylesheet" href="css/style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@200;400;600&family=Amiri&display=swap');
-        
-        :root { 
-            --gold: #f39c12; 
-            --glass: rgba(255, 255, 255, 0.08); 
-            --border: rgba(255, 255, 255, 0.15);
-            --text: #ffffff;
-        }
-
-        body { 
-            margin: 0; font-family: 'Inter', sans-serif; transition: background 2s ease, color 1s ease; 
-            background: #0a0a0c; color: var(--text); overflow: hidden; 
-        }
-
-        /* Sun-Sweep Dynamic Gradient System */
-        body.mode-day { --text: #2d3436; --glass: rgba(0, 0, 0, 0.05); --border: rgba(0, 0, 0, 0.1); }
-        body.mode-night { --text: #ffffff; --glass: rgba(255, 255, 255, 0.08); --border: rgba(255, 255, 255, 0.15); }
-
-        .orb { position: fixed; width: 400px; height: 400px; border-radius: 50%; filter: blur(100px); z-index: -1; opacity: 0.3; transition: all 3s ease; }
-
-        .page { display: none; height: 100vh; overflow-y: auto; padding: 40px 20px 140px 20px; box-sizing: border-box; }
-        .page.active { display: block; animation: fadeIn 0.5s ease forwards; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-        /* Navigation - Now hides properly */
-        .nav { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); width: 85%; display: flex; background: rgba(20, 20, 20, 0.4); backdrop-filter: blur(25px); padding: 10px; border-radius: 40px; border: 1px solid var(--border); z-index: 1000; transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
-        .nav.hidden { opacity: 0; transform: translate(-50%, 100px); pointer-events: none; }
-        .nav button { flex: 1; background: none; border: none; color: inherit; opacity: 0.4; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; cursor: pointer; }
-        .nav button.active { opacity: 1; color: var(--gold); }
-
-        /* Play Overlay (The Intent GUI) */
-        #intent-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(20px); z-index: 3000; display: none; align-items: center; justify-content: center; }
-        .intent-box { background: var(--glass); border: 1px solid var(--border); padding: 35px; border-radius: 40px; width: 90%; max-width: 420px; text-align: center; color: white; }
-        .intent-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 25px 0; }
-        .intent-chip { background: rgba(255,255,255,0.05); border: 1px solid var(--border); padding: 15px; border-radius: 20px; cursor: pointer; transition: 0.2s; font-size: 0.8rem; }
-        .intent-chip.active { background: var(--gold); color: black; border-color: var(--gold); }
-
-        /* Cards & UI Elements */
-        .card { background: var(--glass); backdrop-filter: blur(15px); border-radius: 30px; padding: 25px; margin-bottom: 20px; border: 1px solid var(--border); position: relative; }
-        .arabic { font-family: 'Amiri', serif; font-size: 2.3rem; direction: rtl; text-align: center; margin: 15px 0; line-height: 1.7; color: inherit; }
-        .btn-play { background: var(--gold); color: #000; border: none; padding: 16px; border-radius: 22px; font-weight: 600; width: 100%; cursor: pointer; font-size: 1rem; }
-
-        /* Player */
-        #player-view { height: 100vh; overflow-y: scroll; scroll-snap-type: y mandatory; -webkit-overflow-scrolling: touch; }
-        .dhikr-row { height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; scroll-snap-align: center; opacity: 0.15; transition: 0.8s; text-align: center; padding: 40px; box-sizing: border-box; }
-        .dhikr-row.active { opacity: 1; transform: scale(1.05); }
-        .center-line { position: fixed; top: 50%; left: 10%; width: 80%; height: 1px; background: linear-gradient(90deg, transparent, var(--gold), transparent); opacity: 0.4; pointer-events: none; z-index: 5; }
-    </style>
+    <script src="config.js"></script>
 </head>
 <body class="mode-night">
 
-    <div class="orb" id="orb-sun" style="background: #f1c40f; top: -10%; right: -10%;"></div>
+    <div class="orb" id="orb-sun"  style="background: #f1c40f; top: -10%; right: -10%;"></div>
     <div class="orb" id="orb-moon" style="background: #3498db; bottom: -10%; left: -10%;"></div>
 
+    <!-- Intent Modal -->
     <div id="intent-modal">
         <div class="intent-box">
-            <h2 id="intent-title" style="font-weight: 200; margin-bottom: 5px;">Launch Litany</h2>
+            <h2 id="intent-title" style="font-weight:200; margin-bottom:5px;">Launch Litany</h2>
             <p style="opacity:0.5; font-size:0.8rem;">Select your session intent</p>
-            
-            <div class="intent-grid" id="intent-options">
-                </div>
-            
-            <div id="resume-section" style="display:none; margin-bottom: 20px;">
+
+            <div class="intent-grid" id="intent-options"></div>
+
+            <div id="resume-section" style="display:none; margin-bottom:20px;">
                 <p style="color:var(--gold); font-size:0.7rem; text-transform:uppercase; letter-spacing:1px;">Unfinished Session Found</p>
-                <button class="btn-play" style="background:white;" id="btn-resume">Resume Progress</button>
+                <button class="btn-play" style="background:white; color:#000;" id="btn-resume">Resume Progress</button>
             </div>
 
             <div style="display:flex; gap:10px;">
-                <button class="btn-play" id="btn-start-flow">🌊 Flow</button>
-                <button class="btn-play" style="background:rgba(255,255,255,0.1); color:white;" id="btn-start-tap">👆 Tap</button>
+                <button class="btn-play" id="btn-start-flow">Flow</button>
+                <button class="btn-play" style="background:rgba(255,255,255,0.1); color:white;" id="btn-start-tap">Tap</button>
             </div>
-            <button onclick="closeIntent()" style="background:none; border:none; color:white; margin-top:20px; opacity:0.4;">Cancel</button>
+            <button onclick="closeIntent()" style="background:none; border:none; color:white; margin-top:20px; opacity:0.4; cursor:pointer;">Cancel</button>
         </div>
     </div>
 
+    <!-- Home Page -->
     <div id="home" class="page active">
-        <h1 style="font-weight: 200;">My Litanies</h1>
-        <p id="prayer-status" style="opacity: 0.5; font-size: 0.8rem;">Connecting to sun...</p>
+        <h1 style="font-weight:200;">My Litanies</h1>
+        <p id="prayer-status" style="opacity:0.5; font-size:0.8rem;">Connecting to sun…</p>
         <div id="roster-list"></div>
     </div>
 
+    <!-- Shop Page -->
     <div id="shop" class="page">
-        <h1 style="font-weight: 200;">Shop</h1>
+        <h1 style="font-weight:200;">Shop</h1>
         <div id="shop-list"></div>
     </div>
 
-    <div id="player" class="page" style="padding: 0; background: #000;">
+    <!-- Player Page -->
+    <div id="player" class="page" style="padding:0; background:#000;">
         <div class="center-line"></div>
         <div id="player-view"></div>
-        <button onclick="exitPlayer()" style="position:fixed; top:25px; right:25px; z-index:4000; background:rgba(255,255,255,0.1); border:none; color:white; padding:10px 15px; border-radius:15px; backdrop-filter:blur(10px);">✕</button>
+        <button
+            onclick="exitPlayer()"
+            style="position:fixed; top:25px; right:25px; z-index:4000; background:rgba(255,255,255,0.1); border:none; color:white; padding:10px 15px; border-radius:15px; backdrop-filter:blur(10px); cursor:pointer;"
+            aria-label="Exit player"
+        >✕</button>
     </div>
 
-    <nav class="nav" id="main-nav">
-        <button id="nav-home" class="active" onclick="showPage('home')">Litanies</button>
-        <button id="nav-shop" onclick="showPage('shop')">Shop</button>
+    <!-- Bottom Navigation -->
+    <nav class="nav" id="main-nav" aria-label="Main navigation">
+        <button id="nav-home" class="active" onclick="showPage('home')" aria-label="My Litanies">Litanies</button>
+        <button id="nav-shop"               onclick="showPage('shop')" aria-label="Shop">Shop</button>
     </nav>
 
-    <script>
-        const SB_URL = "https://qtmbkihjgdtdzjafcpji.supabase.co";
-        const SB_KEY = "sb_publishable_v2c41Jbqj-xNtdLMdM__zA_zYc5iQxb";
-        const client = supabase.createClient(SB_URL, SB_KEY);
-        
-        let activeLitanyId = null;
-        let activeSession = null;
-
-        async function init() { updateSunGradient(); loadRoster(); }
-
-        // --- THEME: SUN-SWEEP GRADIENT ---
-        async function updateSunGradient() {
-            navigator.geolocation.getCurrentPosition(async (pos) => {
-                const res = await fetch(`https://api.aladhan.com/v1/timings?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&method=2`);
-                const { data } = await res.json();
-                const now = new Date();
-                const h = now.getHours(), m = now.getMinutes();
-                const currentTimeStr = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
-                
-                const isDay = currentTimeStr >= data.timings.Fajr && currentTimeStr < data.timings.Maghrib;
-                document.body.className = isDay ? 'mode-day' : 'mode-night';
-                
-                // Dynamic Background calculation (Simplified sweep)
-                const hue = isDay ? 45 : 240;
-                const lightness = isDay ? (95 - (h % 12)) : (5 + (h % 12));
-                document.body.style.background = `radial-gradient(circle at top right, hsl(${hue}, 80%, ${lightness + 10}%), hsl(${hue}, 20%, ${lightness}%))`;
-                
-                document.getElementById('prayer-status').innerText = `Lexington • ${isDay ? 'Day Mode' : 'Night Mode'} • Next: ${isDay ? 'Maghrib' : 'Fajr'}`;
-            });
-        }
-
-        function showPage(id) {
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
-            document.getElementById(id).classList.add('active');
-            const btn = document.getElementById('nav-' + id);
-            if(btn) btn.classList.add('active');
-            if(id === 'home') loadRoster(); else if(id === 'shop') loadShop();
-            document.getElementById('main-nav').classList.remove('hidden');
-        }
-
-        async function loadRoster() {
-            const { data } = await client.from('litanies').select('id, name');
-            document.getElementById('roster-list').innerHTML = data.map(lit => `
-                <div class="card">
-                    <h2 style="font-weight:200; margin:0 0 15px 0;">${lit.name}</h2>
-                    <button class="btn-play" onclick="openIntent('${lit.id}', '${lit.name}')">Play</button>
-                </div>
-            `).join('');
-        }
-
-        // --- INTENT GUI LOGIC ---
-        async function openIntent(id, name) {
-            activeLitanyId = id;
-            document.getElementById('intent-title').innerText = name;
-            document.getElementById('intent-modal').style.display = 'flex';
-            
-            // 1. Check for unfinished sessions
-            const { data: sess } = await client.from('litany_sessions').select('*').eq('litany_id', id).eq('is_completed', false).maybeSingle();
-            const resumeDiv = document.getElementById('resume-section');
-            if (sess) {
-                resumeDiv.style.display = 'block';
-                activeSession = sess;
-                document.getElementById('btn-resume').onclick = () => launchSession(sess);
-            } else { resumeDiv.style.display = 'none'; }
-
-            // 2. Load Schedules
-            const { data: sch } = await client.from('litany_schedules').select('*').eq('litany_id', id);
-            const grid = document.getElementById('intent-options');
-            grid.innerHTML = (sch || []).map(s => `<div class="intent-chip" onclick="selectIntent('${s.label}')">${s.label}<br><small>${s.time_hint}</small></div>`).join('') + 
-                             `<div class="intent-chip" onclick="selectIntent('Freestyle')">Freestyle<br><small>Anytime</small></div>`;
-        }
-
-        function closeIntent() { document.getElementById('intent-modal').style.display = 'none'; }
-
-        async function selectIntent(label) {
-            document.querySelectorAll('.intent-chip').forEach(c => c.classList.remove('active'));
-            event.target.classList.add('active');
-            // Logic to track the chosen label for the new session
-        }
-
-        document.getElementById('btn-start-flow').onclick = () => createNewSession('flow');
-        document.getElementById('btn-start-tap').onclick = () => createNewSession('tap');
-
-        async function createNewSession(mode) {
-            const label = document.querySelector('.intent-chip.active')?.innerText.split('\n')[0] || 'Freestyle';
-            const { data } = await client.from('litany_sessions').insert({
-                litany_id: activeLitanyId,
-                mode: mode,
-                session_label: label
-            }).select().single();
-            launchSession(data);
-        }
-
-        async function launchSession(session) {
-            closeIntent();
-            document.getElementById('main-nav').classList.add('hidden');
-            showPage('player');
-            const { data } = await client.from('litany_structure').select('user_count, adhkar_blocks(*)').eq('litany_id', session.litany_id).order('order_index');
-            
-            if (session.mode === 'flow') runFlow(data, session); else runTap(data, session);
-        }
-
-        function runFlow(data, session) {
-            const view = document.getElementById('player-view');
-            view.innerHTML = '';
-            data.forEach((item, bIdx) => {
-                for(let i=1; i <= item.user_count; i++) {
-                    const row = document.createElement('div');
-                    row.className = 'dhikr-row';
-                    row.dataset.idx = bIdx; row.dataset.cnt = i;
-                    row.innerHTML = `<div class="arabic">${item.adhkar_blocks.arabic}</div><div style="opacity:0.4">${i}/${item.user_count}</div>`;
-                    view.appendChild(row);
-                }
-            });
-            const obs = new IntersectionObserver((es) => {
-                es.forEach(e => { if(e.isIntersecting) { e.target.classList.add('active'); saveProgress(session.id, e.target.dataset.idx, e.target.dataset.cnt); } });
-            }, { threshold: 0.6 });
-            document.querySelectorAll('.dhikr-row').forEach(r => obs.observe(r));
-        }
-
-        async function saveProgress(sId, bIdx, cnt) {
-            await client.from('litany_sessions').update({ current_block_index: bIdx, current_count: cnt }).eq('id', sId);
-        }
-
-        function exitPlayer() { if(confirm("Exit and save progress?")) showPage('home'); }
-
-        init();
-    </script>
+    <script src="js/app.js"></script>
 </body>
 </html>
