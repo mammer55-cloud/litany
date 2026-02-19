@@ -63,7 +63,7 @@ body.mode-night { --text: #ffffff; --glass: rgba(255, 255, 255, 0.08); --border:
 .nav button { flex: 1; background: none; border: none; color: inherit; opacity: 0.4; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; cursor: pointer; }
 .nav button.active { opacity: 1; color: var(--gold); }
 
-/* Intent Modal */
+/* ── Intent Modal ── */
 #intent-modal {
     position: fixed;
     top: 0; left: 0;
@@ -74,51 +74,86 @@ body.mode-night { --text: #ffffff; --glass: rgba(255, 255, 255, 0.08); --border:
     display: none;
     align-items: center;
     justify-content: center;
+    overflow-y: auto;
 }
 .intent-box {
     background: var(--glass);
     border: 1px solid var(--border);
-    padding: 35px;
+    padding: 30px 28px;
     border-radius: 40px;
     width: 90%;
     max-width: 420px;
     text-align: center;
     color: white;
+    margin: auto;
 }
 .intent-heading { font-weight: 200; margin: 0 0 5px 0; }
 .intent-sub { opacity: 0.5; font-size: 0.8rem; margin: 0 0 4px 0; }
-.intent-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 25px 0; }
+.intent-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 20px 0 12px; }
 .intent-chip {
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--border);
-    padding: 15px;
+    padding: 12px;
     border-radius: 20px;
     cursor: pointer;
     transition: 0.2s;
     font-size: 0.8rem;
 }
 .intent-chip.active { background: var(--gold); color: black; border-color: var(--gold); }
-.intent-actions { display: flex; gap: 10px; }
+.intent-actions { display: flex; gap: 10px; margin-top: 12px; }
 .btn-cancel {
     background: none;
     border: none;
     color: white;
-    margin-top: 20px;
+    margin-top: 16px;
     opacity: 0.4;
     cursor: pointer;
     font-family: inherit;
 }
 
+/* Add new intention inline form */
+.intent-add-row { margin-bottom: 4px; }
+.intent-add-input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border);
+    color: white;
+    border-radius: 14px;
+    padding: 10px 14px;
+    font-size: 0.82rem;
+    font-family: inherit;
+    margin-bottom: 6px;
+    outline: none;
+    box-sizing: border-box;
+    text-align: left;
+}
+.intent-add-input:focus { border-color: var(--gold); }
+.intent-add-input.hidden { display: none; }
+.btn-intent-save {
+    background: var(--gold);
+    color: #000;
+    border: none;
+    border-radius: 14px;
+    padding: 8px 20px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    margin-bottom: 6px;
+}
+.btn-intent-save.hidden { display: none; }
+
 /* Resume section */
-.resume-section { margin-bottom: 20px; }
-.resume-section.hidden { display: none; }
-.resume-label { color: var(--gold); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; }
+.resume-section { margin-bottom: 14px; }
+.resume-label { color: var(--gold); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 8px; }
+.resume-actions { display: flex; gap: 8px; }
+.resume-actions .btn-play { flex: 1; padding: 12px; font-size: 0.85rem; }
 .btn-resume-style { background: white; color: #000; }
 
 /* Secondary button variant */
 .btn-secondary { background: rgba(255, 255, 255, 0.1); color: white; }
 
-/* Cards */
+/* ── Cards ── */
 .card {
     background: var(--glass);
     backdrop-filter: blur(15px);
@@ -128,112 +163,27 @@ body.mode-night { --text: #ffffff; --glass: rgba(255, 255, 255, 0.08); --border:
     border: 1px solid var(--border);
     position: relative;
 }
-.card-title { font-weight: 200; margin: 0 0 15px 0; }
+.card-title { font-weight: 200; margin: 0 0 4px 0; }
+.card-desc { opacity: 0.5; font-size: 0.8rem; margin: 0 0 4px 0; }
+.card-sub  { opacity: 0.4; font-size: 0.75rem; margin: 0 0 14px 0; text-transform: uppercase; letter-spacing: 0.5px; }
+.card-header-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 14px; }
 
-/* Shop placeholder */
-.shop-placeholder { text-align: center; padding: 50px 25px; }
-.shop-icon { font-size: 2rem; margin: 0 0 15px 0; }
-.shop-coming-soon { font-weight: 200; font-size: 1.1rem; margin: 0 0 8px 0; }
-.shop-subtitle { opacity: 0.4; font-size: 0.8rem; margin: 0; }
-
-.arabic { font-family: 'Amiri', serif; font-size: 2.3rem; direction: rtl; text-align: center; margin: 15px 0; line-height: 1.7; color: inherit; }
-.btn-play { background: var(--gold); color: #000; border: none; padding: 16px; border-radius: 22px; font-weight: 600; width: 100%; cursor: pointer; font-size: 1rem; font-family: inherit; }
-.btn-play:disabled { opacity: 0.5; cursor: not-allowed; }
-
-/* Loading state */
-.loading-text { opacity: 0.4; font-size: 0.85rem; text-align: center; padding: 40px 0; }
-
-/* Player page */
-.player-page { padding: 0; background: #000; }
-.btn-exit {
-    position: fixed;
-    top: 25px;
-    right: 25px;
-    z-index: 4000;
-    background: rgba(255, 255, 255, 0.1);
-    border: none;
-    color: white;
-    padding: 10px 15px;
-    border-radius: 15px;
-    backdrop-filter: blur(10px);
-    cursor: pointer;
-    font-family: inherit;
-}
-
-/* Flow Player */
-#player-view { height: 100vh; overflow-y: scroll; scroll-snap-type: y mandatory; -webkit-overflow-scrolling: touch; }
-.dhikr-row {
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    scroll-snap-align: center;
-    opacity: 0.15;
-    transition: 0.8s;
-    text-align: center;
-    padding: 40px;
-    box-sizing: border-box;
-}
-.dhikr-row.active { opacity: 1; transform: scale(1.05); }
-.dhikr-counter { opacity: 0.4; }
-.center-line {
-    position: fixed;
-    top: 50%; left: 10%;
-    width: 80%; height: 1px;
-    background: linear-gradient(90deg, transparent, var(--gold), transparent);
-    opacity: 0.4;
-    pointer-events: none;
-    z-index: 5;
-}
-
-/* Tap Player */
-#tap-view {
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    padding: 40px;
-    box-sizing: border-box;
-}
-.tap-counter {
-    font-size: 5rem;
-    font-weight: 200;
-    color: var(--gold);
-    line-height: 1;
-    margin: 20px 0;
-}
-.tap-total { opacity: 0.4; font-size: 0.85rem; margin-bottom: 30px; }
-.tap-progress {
-    font-size: 0.75rem;
-    opacity: 0.5;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 30px;
-}
-.tap-translation { opacity: 0.5; font-size: 0.8rem; margin: 0 0 10px 0; }
-.btn-tap {
-    width: 160px;
-    height: 160px;
+/* Delete litany button */
+.btn-delete-litany {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border);
+    color: rgba(255,255,255,0.35);
+    width: 30px; height: 30px;
     border-radius: 50%;
-    background: var(--gold);
-    border: none;
-    color: #000;
-    font-size: 2rem;
+    font-size: 0.7rem;
     cursor: pointer;
-    transition: transform 0.1s ease, box-shadow 0.1s ease;
-    box-shadow: 0 0 40px rgba(243, 156, 18, 0.3);
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, color 0.15s;
     font-family: inherit;
+    padding: 0;
 }
-.btn-tap:active { transform: scale(0.93); box-shadow: 0 0 20px rgba(243, 156, 18, 0.2); }
-
-/* Complete screen */
-.complete-screen { text-align: center; }
-.complete-icon { font-size: 2rem; margin: 0 0 15px 0; }
-.complete-label { font-weight: 200; font-size: 1.3rem; }
-.btn-done { margin-top: 30px; width: auto; padding: 16px 40px; }
+.btn-delete-litany:hover { background: rgba(220,50,50,0.2); color: #e05555; border-color: #e05555; }
 
 /* ── New Litany button ── */
 .btn-new-litany {
@@ -252,15 +202,125 @@ body.mode-night { --text: #ffffff; --glass: rgba(255, 255, 255, 0.08); --border:
 }
 .btn-new-litany:hover { background: rgba(243, 156, 18, 0.2); }
 
-/* ── Card extras ── */
-.card-desc { opacity: 0.5; font-size: 0.8rem; margin: 0 0 6px 0; }
-.card-sub  { opacity: 0.4; font-size: 0.75rem; margin: 0 0 14px 0; text-transform: uppercase; letter-spacing: 0.5px; }
+.arabic { font-family: 'Amiri', serif; font-size: 2.3rem; direction: rtl; text-align: center; margin: 15px 0; line-height: 1.7; color: inherit; }
+.btn-play { background: var(--gold); color: #000; border: none; padding: 16px; border-radius: 22px; font-weight: 600; width: 100%; cursor: pointer; font-size: 1rem; font-family: inherit; }
+.btn-play:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Loading state */
+.loading-text { opacity: 0.4; font-size: 0.85rem; text-align: center; padding: 40px 0; }
+
+/* ── Player page ── */
+/* overflow: hidden prevents tap mode from scrolling */
+.player-page { padding: 0; background: #000; overflow: hidden; }
+.btn-exit {
+    position: fixed;
+    top: 25px; right: 25px;
+    z-index: 4000;
+    background: rgba(255, 255, 255, 0.1);
+    border: none; color: white;
+    padding: 10px 15px;
+    border-radius: 15px;
+    backdrop-filter: blur(10px);
+    cursor: pointer;
+    font-family: inherit;
+}
+
+/* ── Flow Player ── */
+#player-view { height: 100vh; overflow-y: scroll; scroll-snap-type: y mandatory; -webkit-overflow-scrolling: touch; }
+.dhikr-row {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    scroll-snap-align: center;
+    /* invisible by default — only the active (centered) row shows */
+    opacity: 0;
+    transition: opacity 0.6s ease, transform 0.6s ease;
+    text-align: center;
+    padding: 60px 40px;
+    box-sizing: border-box;
+    background: #000;
+}
+.dhikr-row.active { opacity: 1; transform: scale(1.03); }
+.dhikr-counter { opacity: 0.35; font-size: 0.8rem; margin-top: 12px; }
+.center-line {
+    position: fixed;
+    top: 50%; left: 10%;
+    width: 80%; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    opacity: 0.3;
+    pointer-events: none;
+    z-index: 5;
+}
+
+/* ── Tap Player ── */
+#tap-view {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 60px 30px 40px;
+    box-sizing: border-box;
+    background: #000;
+    overflow: hidden;
+}
+.tap-counter {
+    font-size: 5rem;
+    font-weight: 200;
+    color: var(--gold);
+    line-height: 1;
+    margin: 14px 0;
+}
+.tap-total { opacity: 0.4; font-size: 0.85rem; margin-bottom: 24px; }
+.tap-progress {
+    font-size: 0.75rem;
+    opacity: 0.5;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 20px;
+}
+/* Shrink arabic text in tap mode so everything fits */
+#tap-view .arabic { font-size: 1.8rem; margin: 8px 0; }
+.tap-translation { opacity: 0.5; font-size: 0.78rem; margin: 0 0 8px 0; }
+.btn-tap {
+    width: 140px; height: 140px;
+    border-radius: 50%;
+    background: var(--gold);
+    border: none; color: #000;
+    font-size: 2rem;
+    cursor: pointer;
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+    box-shadow: 0 0 40px rgba(243, 156, 18, 0.3);
+    font-family: inherit;
+    flex-shrink: 0;
+}
+.btn-tap:active { transform: scale(0.93); box-shadow: 0 0 20px rgba(243, 156, 18, 0.2); }
+
+/* Complete screen */
+.complete-screen { text-align: center; }
+.complete-icon { font-size: 2rem; margin: 0 0 15px 0; }
+.complete-label { font-weight: 200; font-size: 1.3rem; }
+.btn-done { margin-top: 30px; width: auto; padding: 16px 40px; }
 
 /* ── Shop ── */
 .shop-category { margin-bottom: 10px; }
 .shop-cat-label {
     font-size: 0.7rem; font-weight: 600; text-transform: uppercase;
     letter-spacing: 1.5px; opacity: 0.45; margin: 20px 0 10px 4px;
+}
+.featured-litany-card { border-color: rgba(243,156,18,0.25); }
+.btn-featured-play { width: auto; padding: 10px 20px; font-size: 0.85rem; flex-shrink: 0; }
+.schedule-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.schedule-pill {
+    background: rgba(243,156,18,0.12);
+    border: 1px solid rgba(243,156,18,0.3);
+    color: var(--gold);
+    font-size: 0.7rem; font-weight: 600;
+    padding: 3px 10px; border-radius: 99px;
 }
 .shop-card { padding: 20px; }
 .shop-card-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 4px; }
@@ -275,10 +335,8 @@ body.mode-night { --text: #ffffff; --glass: rgba(255, 255, 255, 0.08); --border:
     color: var(--gold);
     padding: 6px 14px;
     border-radius: 14px;
-    font-size: 0.78rem;
-    font-weight: 600;
-    cursor: pointer;
-    font-family: inherit;
+    font-size: 0.78rem; font-weight: 600;
+    cursor: pointer; font-family: inherit;
     white-space: nowrap;
     transition: background 0.15s;
     flex-shrink: 0;
@@ -307,14 +365,9 @@ body.mode-night { --text: #ffffff; --glass: rgba(255, 255, 255, 0.08); --border:
     border: 1px solid var(--border);
     border-radius: 28px 28px 0 0;
     padding: 28px 24px 36px;
-    width: 100%;
-    max-width: 500px;
+    width: 100%; max-width: 500px;
 }
-.modal-heading {
-    font-weight: 200;
-    font-size: 1.2rem;
-    margin: 0 0 20px;
-}
+.modal-heading { font-weight: 200; font-size: 1.2rem; margin: 0 0 20px; }
 .modal-input {
     width: 100%;
     background: rgba(255, 255, 255, 0.06);
@@ -322,11 +375,9 @@ body.mode-night { --text: #ffffff; --glass: rgba(255, 255, 255, 0.08); --border:
     color: inherit;
     border-radius: 14px;
     padding: 13px 16px;
-    font-size: 0.95rem;
-    font-family: inherit;
+    font-size: 0.95rem; font-family: inherit;
     margin-bottom: 12px;
-    outline: none;
-    box-sizing: border-box;
+    outline: none; box-sizing: border-box;
     -webkit-appearance: none;
 }
 .modal-input:focus { border-color: var(--gold); }
@@ -337,20 +388,15 @@ body.mode-night { --text: #ffffff; --glass: rgba(255, 255, 255, 0.08); --border:
 /* ── Toast ── */
 #app-toast {
     position: fixed;
-    bottom: 100px;
-    left: 50%;
+    bottom: 100px; left: 50%;
     transform: translateX(-50%) translateY(10px);
     background: rgba(40, 40, 40, 0.95);
     border: 1px solid var(--border);
     color: #fff;
-    padding: 10px 20px;
-    border-radius: 99px;
-    font-size: 0.82rem;
-    z-index: 9999;
-    opacity: 0;
-    transition: opacity 0.2s, transform 0.2s;
-    pointer-events: none;
-    white-space: nowrap;
+    padding: 10px 20px; border-radius: 99px;
+    font-size: 0.82rem; z-index: 9999;
+    opacity: 0; transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none; white-space: nowrap;
     backdrop-filter: blur(10px);
 }
 #app-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }

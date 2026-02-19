@@ -21,9 +21,18 @@
 
             <div class="intent-grid" id="intent-options"></div>
 
-            <div id="resume-section" class="resume-section hidden">
+            <div id="intent-add-row" class="intent-add-row">
+                <input type="text" id="new-intent-label" class="intent-add-input" placeholder="+ New intention label…" />
+                <input type="text" id="new-intent-time" class="intent-add-input intent-add-time hidden" placeholder="Time hint (e.g. After Fajr)" />
+                <button class="btn-intent-save hidden" id="btn-save-intent" onclick="saveNewIntention()">Save</button>
+            </div>
+
+            <div id="resume-section" class="resume-section" style="display:none">
                 <p class="resume-label">Unfinished Session Found</p>
-                <button class="btn-play btn-resume-style" id="btn-resume">Resume Progress</button>
+                <div class="resume-actions">
+                    <button class="btn-play btn-resume-style" id="btn-resume">Resume</button>
+                    <button class="btn-play btn-secondary" id="btn-start-fresh">Start Fresh</button>
+                </div>
             </div>
 
             <div class="intent-actions">
