@@ -1,3 +1,100 @@
+<!--
+  ============================================================
+  SUPABASE DATABASE SCHEMA — CURRENT STATE
+  Last updated: 2026-02-19
+  ⚠️ Always update this comment block whenever changes are
+     made to the Supabase database schema.
+  ============================================================
+
+  TABLE: public.my_litanies
+  --------------------------
+  id          SERIAL          PRIMARY KEY
+  name        TEXT            NULL
+  created_at  TIMESTAMPTZ     NULL  DEFAULT now()
+
+  TABLE: public.litanies
+  --------------------------
+  id             UUID        PRIMARY KEY  DEFAULT gen_random_uuid()
+  name           TEXT        NOT NULL
+  description    TEXT        NULL
+  scheduled_time TEXT        NULL
+
+  TABLE: public.adhkar_library
+  --------------------------
+  id               SERIAL   PRIMARY KEY
+  arabic_text      TEXT     NULL
+  transliteration  TEXT     NULL
+  translation      TEXT     NULL
+  default_count    INTEGER  NULL
+  source_reference TEXT     NULL
+  category         TEXT     NULL
+
+  TABLE: public.adhkar_blocks
+  --------------------------
+  id              UUID    PRIMARY KEY  DEFAULT gen_random_uuid()
+  title           TEXT    NOT NULL
+  arabic          TEXT    NOT NULL
+  transliteration TEXT    NULL
+  translation     TEXT    NULL
+  category        TEXT    NULL
+
+  TABLE: public.litany_structure
+  --------------------------
+  id           SERIAL   PRIMARY KEY
+  litany_id    UUID     NULL  → FK → litanies(id)  ON DELETE CASCADE
+  block_id     UUID     NULL  → FK → adhkar_blocks(id)
+  order_index  INTEGER  NULL
+  user_count   INTEGER  NULL
+
+  TABLE: public.litany_sessions
+  --------------------------
+  id                  UUID        PRIMARY KEY  DEFAULT gen_random_uuid()
+  litany_id           UUID        NULL  → FK → litanies(id)  ON DELETE CASCADE
+  current_block_index INTEGER     NULL  DEFAULT 0
+  current_count       INTEGER     NULL  DEFAULT 0
+  is_completed        BOOLEAN     NULL  DEFAULT false
+  mode                TEXT        NULL
+  last_active         TIMESTAMPTZ NULL  DEFAULT now()
+  session_label       TEXT        NULL  DEFAULT 'Freestyle'
+  start_time          TIMESTAMPTZ NULL  DEFAULT now()
+
+  TABLE: public.litany_schedules
+  --------------------------
+  id         UUID        PRIMARY KEY  DEFAULT gen_random_uuid()
+  litany_id  UUID        NULL  → FK → litanies(id)  ON DELETE CASCADE
+  label      TEXT        NOT NULL
+  time_hint  TEXT        NULL
+  created_at TIMESTAMPTZ NULL  DEFAULT now()
+
+  TABLE: public.litany_items
+  --------------------------
+  litany_id  INTEGER  NULL  → FK → my_litanies(id)
+  dhikr_id   INTEGER  NULL  → FK → adhkar_library(id)
+  position   INTEGER  NULL
+  (No primary key defined)
+
+  ============================================================
+  RELATIONSHIPS SUMMARY
+  ============================================================
+  litany_structure.litany_id  → litanies.id         (CASCADE DELETE)
+  litany_structure.block_id   → adhkar_blocks.id
+  litany_sessions.litany_id   → litanies.id          (CASCADE DELETE)
+  litany_schedules.litany_id  → litanies.id          (CASCADE DELETE)
+  litany_items.litany_id      → my_litanies.id
+  litany_items.dhikr_id       → adhkar_library.id
+
+  ============================================================
+  NOTES
+  ============================================================
+  - There are TWO separate litany tables:
+      • my_litanies  (SERIAL id, integer-based)
+      • litanies     (UUID id)
+    litany_items references my_litanies, while litany_structure,
+    litany_sessions, and litany_schedules all reference litanies.
+  - All tables use TABLESPACE pg_default.
+  ============================================================
+-->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
