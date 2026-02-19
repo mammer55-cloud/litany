@@ -34,16 +34,44 @@
         </div>
     </div>
 
+    <!-- New Litany Modal -->
+    <div id="new-litany-modal" class="bottom-modal-overlay">
+        <div class="bottom-modal">
+            <h2 class="modal-heading">New Litany</h2>
+            <input type="text" id="new-litany-name" class="modal-input" placeholder="Name (e.g. Morning Wird)" />
+            <input type="text" id="new-litany-desc" class="modal-input" placeholder="Description (optional)" />
+            <div class="modal-actions">
+                <button class="btn-play btn-secondary" onclick="closeBottomModal('new-litany-modal')">Cancel</button>
+                <button class="btn-play" onclick="createLitany()">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add to Litany Modal -->
+    <div id="add-modal" class="bottom-modal-overlay">
+        <div class="bottom-modal">
+            <h2 class="modal-heading" id="add-modal-title">Add to Litany</h2>
+            <select id="add-litany-select" class="modal-input modal-select"></select>
+            <input type="number" id="add-count" class="modal-input" placeholder="Count (e.g. 33, 99, 100)" min="1" value="33" />
+            <div class="modal-actions">
+                <button class="btn-play btn-secondary" onclick="closeBottomModal('add-modal')">Cancel</button>
+                <button class="btn-play" onclick="confirmAddToLitany()">Add</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Home Page -->
     <div id="home" class="page active">
         <h1 class="page-title">My Litanies</h1>
         <p id="prayer-status" class="prayer-status">Connecting to sun…</p>
+        <button class="btn-new-litany" onclick="openNewLitanyModal()">+ New Litany</button>
         <div id="roster-list"></div>
     </div>
 
     <!-- Shop Page -->
     <div id="shop" class="page">
         <h1 class="page-title">Shop</h1>
+        <p class="prayer-status">Browse adhkar and add to your litanies</p>
         <div id="shop-list"></div>
     </div>
 

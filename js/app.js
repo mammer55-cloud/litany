@@ -1,9 +1,12 @@
 const client = supabase.createClient(SB_URL, SB_KEY);
 
-let activeLitanyId  = null;
-let activeSession   = null;
-let selectedLabel   = 'Freestyle';
-let flowObserver    = null;   // kept so we can disconnect on exit
+let activeLitanyId    = null;
+let activeSession     = null;
+let selectedLabel     = 'Freestyle';
+let flowObserver      = null;   // kept so we can disconnect on exit
+let pendingBlockId    = null;
+let pendingBlockTitle = null;
+let allLitanies       = [];
 
 // ─── BOOT ────────────────────────────────────────────────────────────────────
 
@@ -111,6 +114,13 @@ function bindStaticListeners() {
         document.querySelectorAll('.intent-chip').forEach(c => c.classList.remove('active'));
         chip.classList.add('active');
     });
+
+    // Bottom modal overlays: close on backdrop click
+    document.querySelectorAll('.bottom-modal-overlay').forEach(overlay => {
+        overlay.addEventListener('click', e => {
+            if (e.target === overlay) closeBottomModal(overlay.id);
+        });
+    });
 }
 
 // ─── ROSTER ──────────────────────────────────────────────────────────────────
@@ -119,36 +129,163 @@ async function loadRoster() {
     const list = document.getElementById('roster-list');
     list.innerHTML = '<p class="loading-text">Loading litanies…</p>';
     try {
-        const { data, error } = await client.from('litanies').select('id, name');
+        const { data, error } = await client
+            .from('litanies')
+            .select('id, name, description, litany_structure(count)')
+            .order('name');
         if (error) throw error;
+        allLitanies = data || [];
         if (!data || data.length === 0) {
-            list.innerHTML = '<p class="loading-text">No litanies found.</p>';
+            list.innerHTML = '<p class="loading-text">No litanies yet. Create one above.</p>';
             return;
         }
-        list.innerHTML = data.map(lit => `
+        list.innerHTML = data.map(lit => {
+            const count = lit.litany_structure?.[0]?.count ?? 0;
+            const sub   = count ? `${count} block${count !== 1 ? 's' : ''}` : 'Empty — add from Shop';
+            return `
             <div class="card">
                 <h2 class="card-title">${escapeHtml(lit.name)}</h2>
+                ${lit.description ? `<p class="card-desc">${escapeHtml(lit.description)}</p>` : ''}
+                <p class="card-sub">${sub}</p>
                 <button class="btn-play btn-open-litany"
                     data-id="${escapeHtml(lit.id)}"
                     data-name="${escapeHtml(lit.name)}">Play</button>
-            </div>
-        `).join('');
+            </div>`;
+        }).join('');
     } catch (err) {
         console.error('loadRoster failed:', err);
         list.innerHTML = '<p class="loading-text">Failed to load litanies. Check connection.</p>';
     }
 }
 
+// ─── NEW LITANY ───────────────────────────────────────────────────────────────
+
+function openNewLitanyModal() {
+    document.getElementById('new-litany-name').value = '';
+    document.getElementById('new-litany-desc').value = '';
+    openBottomModal('new-litany-modal');
+    setTimeout(() => document.getElementById('new-litany-name').focus(), 150);
+}
+
+async function createLitany() {
+    const name = document.getElementById('new-litany-name').value.trim();
+    const desc = document.getElementById('new-litany-desc').value.trim();
+    if (!name) { document.getElementById('new-litany-name').focus(); return; }
+
+    const { error } = await client.from('litanies').insert({ name, description: desc || null });
+    if (error) { console.error('createLitany failed:', error); alert('Could not create litany.'); return; }
+
+    closeBottomModal('new-litany-modal');
+    loadRoster();
+}
+
 // ─── SHOP ────────────────────────────────────────────────────────────────────
 
-function loadShop() {
-    document.getElementById('shop-list').innerHTML = `
-        <div class="card shop-placeholder">
-            <p class="shop-icon">🕌</p>
-            <p class="shop-coming-soon">Coming Soon</p>
-            <p class="shop-subtitle">Curated litanies and adhkar collections will be available here.</p>
-        </div>
-    `;
+async function loadShop() {
+    const list = document.getElementById('shop-list');
+    list.innerHTML = '<p class="loading-text">Loading…</p>';
+    try {
+        const { data, error } = await client
+            .from('adhkar_blocks')
+            .select('*')
+            .order('category')
+            .order('title');
+        if (error) throw error;
+        if (!data || data.length === 0) {
+            list.innerHTML = '<p class="loading-text">No adhkar found.</p>';
+            return;
+        }
+
+        // Group by category
+        const grouped = {};
+        data.forEach(item => {
+            const cat = item.category || 'Dhikr';
+            if (!grouped[cat]) grouped[cat] = [];
+            grouped[cat].push(item);
+        });
+
+        list.innerHTML = Object.entries(grouped).map(([cat, items]) => `
+            <div class="shop-category">
+                <p class="shop-cat-label">${escapeHtml(cat)}</p>
+                ${items.map(item => `
+                <div class="card shop-card">
+                    <div class="shop-card-row">
+                        <h3 class="shop-item-title">${escapeHtml(item.title)}</h3>
+                        <button class="btn-add-shop" onclick="openAddModal('${escapeHtml(item.id)}', '${escapeHtml(item.title).replace(/'/g,"\\'")}')">+ Add</button>
+                    </div>
+                    <div class="arabic shop-arabic">${item.arabic}</div>
+                    ${item.transliteration ? `<p class="shop-translit">${escapeHtml(item.transliteration)}</p>` : ''}
+                    ${item.translation ? `<p class="shop-translation">${escapeHtml(item.translation)}</p>` : ''}
+                </div>`).join('')}
+            </div>
+        `).join('');
+    } catch (err) {
+        console.error('loadShop failed:', err);
+        list.innerHTML = '<p class="loading-text">Failed to load shop. Check connection.</p>';
+    }
+}
+
+// ─── ADD TO LITANY ────────────────────────────────────────────────────────────
+
+async function openAddModal(blockId, blockTitle) {
+    pendingBlockId    = blockId;
+    pendingBlockTitle = blockTitle;
+
+    const { data } = await client.from('litanies').select('id, name').order('name');
+    allLitanies = data || [];
+
+    const select = document.getElementById('add-litany-select');
+    if (!allLitanies.length) {
+        select.innerHTML = '<option disabled selected>No litanies — create one on the Home tab first</option>';
+    } else {
+        select.innerHTML = allLitanies.map(l =>
+            `<option value="${escapeHtml(l.id)}">${escapeHtml(l.name)}</option>`
+        ).join('');
+    }
+
+    document.getElementById('add-modal-title').innerText = `Add "${blockTitle}"`;
+    document.getElementById('add-count').value = '33';
+    openBottomModal('add-modal');
+}
+
+async function confirmAddToLitany() {
+    const litanyId = document.getElementById('add-litany-select').value;
+    const count    = parseInt(document.getElementById('add-count').value, 10);
+    if (!litanyId || !count || count < 1) return;
+
+    // Get next order_index
+    const { data: existing } = await client
+        .from('litany_structure')
+        .select('order_index')
+        .eq('litany_id', litanyId)
+        .order('order_index', { ascending: false })
+        .limit(1);
+
+    const nextIdx = existing?.length && existing[0].order_index != null
+        ? existing[0].order_index + 1 : 1;
+
+    const { error } = await client.from('litany_structure').insert({
+        litany_id:   litanyId,
+        block_id:    pendingBlockId,
+        order_index: nextIdx,
+        user_count:  count
+    });
+
+    if (error) { console.error('confirmAddToLitany failed:', error); alert('Failed to add.'); return; }
+
+    closeBottomModal('add-modal');
+    const litanyName = allLitanies.find(l => l.id === litanyId)?.name || 'litany';
+    showToast(`Added to "${litanyName}"`);
+}
+
+// ─── BOTTOM MODAL HELPERS ─────────────────────────────────────────────────────
+
+function openBottomModal(id) {
+    document.getElementById(id).classList.add('show');
+}
+
+function closeBottomModal(id) {
+    document.getElementById(id).classList.remove('show');
 }
 
 // ─── INTENT MODAL ────────────────────────────────────────────────────────────
@@ -233,10 +370,16 @@ async function launchSession(session) {
     try {
         const { data, error } = await client
             .from('litany_structure')
-            .select('user_count, adhkar_blocks(*)')
+            .select('user_count, order_index, adhkar_blocks(*)')
             .eq('litany_id', session.litany_id)
-            .order('order_index');
+            .order('order_index', { nullsFirst: false });
         if (error) throw error;
+
+        if (!data || data.length === 0) {
+            alert('This litany has no blocks yet. Add some from the Shop first.');
+            exitPlayer();
+            return;
+        }
 
         if (session.mode === 'flow') runFlow(data, session);
         else runTap(data, session);
@@ -380,6 +523,21 @@ function exitPlayer() {
     const tapView = document.getElementById('tap-view');
     if (tapView) tapView.style.display = 'none';
     showPage('home');
+}
+
+// ─── TOAST ────────────────────────────────────────────────────────────────────
+
+function showToast(msg) {
+    let toast = document.getElementById('app-toast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'app-toast';
+        document.body.appendChild(toast);
+    }
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(() => toast.classList.remove('show'), 2200);
 }
 
 // ─── UTILITIES ───────────────────────────────────────────────────────────────
