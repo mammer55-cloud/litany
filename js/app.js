@@ -10,6 +10,7 @@ let flowObserver    = null;   // kept so we can disconnect on exit
 async function init() {
     updateSunGradient();
     loadRoster();
+    bindStaticListeners();
 }
 
 // ─── THEME: SUN-SWEEP GRADIENT ───────────────────────────────────────────────
@@ -81,6 +82,37 @@ function showPage(id) {
     else if (id === 'shop') loadShop();
 }
 
+// ─── STATIC EVENT LISTENERS ──────────────────────────────────────────────────
+
+function bindStaticListeners() {
+    // Nav buttons
+    document.getElementById('nav-home').addEventListener('click', () => showPage('home'));
+    document.getElementById('nav-shop').addEventListener('click', () => showPage('shop'));
+
+    // Intent modal actions
+    document.getElementById('btn-start-flow').addEventListener('click', () => createNewSession('flow'));
+    document.getElementById('btn-start-tap').addEventListener('click',  () => createNewSession('tap'));
+    document.getElementById('btn-cancel-intent').addEventListener('click', closeIntent);
+
+    // Player exit
+    document.getElementById('btn-exit-player').addEventListener('click', exitPlayer);
+
+    // Roster: event delegation for Play buttons
+    document.getElementById('roster-list').addEventListener('click', e => {
+        const btn = e.target.closest('.btn-open-litany');
+        if (btn) openIntent(btn.dataset.id, btn.dataset.name);
+    });
+
+    // Intent chips: event delegation
+    document.getElementById('intent-options').addEventListener('click', e => {
+        const chip = e.target.closest('.intent-chip');
+        if (!chip) return;
+        selectedLabel = chip.dataset.label;
+        document.querySelectorAll('.intent-chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+    });
+}
+
 // ─── ROSTER ──────────────────────────────────────────────────────────────────
 
 async function loadRoster() {
@@ -95,8 +127,10 @@ async function loadRoster() {
         }
         list.innerHTML = data.map(lit => `
             <div class="card">
-                <h2 style="font-weight:200; margin:0 0 15px 0;">${escapeHtml(lit.name)}</h2>
-                <button class="btn-play" onclick="openIntent('${lit.id}', '${escapeAttr(lit.name)}')">Play</button>
+                <h2 class="card-title">${escapeHtml(lit.name)}</h2>
+                <button class="btn-play btn-open-litany"
+                    data-id="${escapeHtml(lit.id)}"
+                    data-name="${escapeHtml(lit.name)}">Play</button>
             </div>
         `).join('');
     } catch (err) {
@@ -109,10 +143,10 @@ async function loadRoster() {
 
 function loadShop() {
     document.getElementById('shop-list').innerHTML = `
-        <div class="card" style="text-align:center; padding: 50px 25px;">
-            <p style="font-size:2rem; margin:0 0 15px 0;">🕌</p>
-            <p style="font-weight:200; font-size:1.1rem; margin:0 0 8px 0;">Coming Soon</p>
-            <p style="opacity:0.4; font-size:0.8rem; margin:0;">Curated litanies and adhkar collections will be available here.</p>
+        <div class="card shop-placeholder">
+            <p class="shop-icon">🕌</p>
+            <p class="shop-coming-soon">Coming Soon</p>
+            <p class="shop-subtitle">Curated litanies and adhkar collections will be available here.</p>
         </div>
     `;
 }
@@ -157,9 +191,9 @@ async function openIntent(id, name) {
 
         const grid = document.getElementById('intent-options');
         const chips = (sch || []).map(s =>
-            `<div class="intent-chip" onclick="selectIntent(event, '${escapeAttr(s.label)}')">${escapeHtml(s.label)}<br><small>${escapeHtml(s.time_hint || '')}</small></div>`
+            `<div class="intent-chip" data-label="${escapeHtml(s.label)}">${escapeHtml(s.label)}<br><small>${escapeHtml(s.time_hint || '')}</small></div>`
         );
-        chips.push(`<div class="intent-chip" onclick="selectIntent(event, 'Freestyle')">Freestyle<br><small>Anytime</small></div>`);
+        chips.push(`<div class="intent-chip" data-label="Freestyle">Freestyle<br><small>Anytime</small></div>`);
         grid.innerHTML = chips.join('');
     } catch (err) {
         console.error('Schedule load failed:', err);
@@ -169,15 +203,6 @@ async function openIntent(id, name) {
 function closeIntent() {
     document.getElementById('intent-modal').style.display = 'none';
 }
-
-function selectIntent(e, label) {
-    selectedLabel = label;
-    document.querySelectorAll('.intent-chip').forEach(c => c.classList.remove('active'));
-    e.currentTarget.classList.add('active');
-}
-
-document.getElementById('btn-start-flow').onclick = () => createNewSession('flow');
-document.getElementById('btn-start-tap').onclick  = () => createNewSession('tap');
 
 async function createNewSession(mode) {
     try {
@@ -231,7 +256,6 @@ function runFlow(data, session) {
     const view = document.getElementById('player-view');
     view.innerHTML = '';
 
-    // Show tap view placeholder in case tap-view exists from a prior session
     const tapView = document.getElementById('tap-view');
     if (tapView) tapView.style.display = 'none';
 
@@ -243,17 +267,20 @@ function runFlow(data, session) {
             row.dataset.cnt = i;
             row.innerHTML   = `
                 <div class="arabic">${escapeHtml(item.adhkar_blocks.arabic)}</div>
-                <div style="opacity:0.4">${i} / ${item.user_count}</div>
+                <div class="dhikr-counter">${i} / ${item.user_count}</div>
             `;
             view.appendChild(row);
         }
     });
 
+    // Debounced save — avoids a Supabase write on every scroll tick
+    const debouncedSave = debounce(saveProgress, 400);
+
     flowObserver = new IntersectionObserver((entries) => {
         entries.forEach(e => {
             if (e.isIntersecting) {
                 e.target.classList.add('active');
-                saveProgress(session.id, e.target.dataset.idx, e.target.dataset.cnt);
+                debouncedSave(session.id, e.target.dataset.idx, e.target.dataset.cnt);
             } else {
                 e.target.classList.remove('active');
             }
@@ -269,9 +296,8 @@ function runTap(data, session) {
     if (flowObserver) { flowObserver.disconnect(); flowObserver = null; }
 
     const view = document.getElementById('player-view');
-    view.innerHTML = '';   // clear flow rows
+    view.innerHTML = '';
 
-    // Build or reuse tap-view
     let tapView = document.getElementById('tap-view');
     if (!tapView) {
         tapView = document.createElement('div');
@@ -287,12 +313,13 @@ function runTap(data, session) {
         if (blockIndex >= data.length) {
             markCompleted(session.id);
             tapView.innerHTML = `
-                <div style="text-align:center;">
-                    <p style="font-size:2rem; margin:0 0 15px 0;">✓</p>
-                    <p style="font-weight:200; font-size:1.3rem;">Litany complete</p>
-                    <button class="btn-play" style="margin-top:30px; width:auto; padding:16px 40px;" onclick="exitPlayer()">Done</button>
+                <div class="complete-screen">
+                    <p class="complete-icon">✓</p>
+                    <p class="complete-label">Litany complete</p>
+                    <button class="btn-play btn-done">Done</button>
                 </div>
             `;
+            tapView.querySelector('.btn-done').addEventListener('click', exitPlayer);
             return;
         }
 
@@ -303,7 +330,7 @@ function runTap(data, session) {
         tapView.innerHTML = `
             <p class="tap-progress">Block ${blockIndex + 1} of ${data.length}</p>
             <div class="arabic">${escapeHtml(block.arabic)}</div>
-            ${block.translation ? `<p style="opacity:0.5; font-size:0.8rem; margin:0 0 10px 0;">${escapeHtml(block.translation)}</p>` : ''}
+            ${block.translation ? `<p class="tap-translation">${escapeHtml(block.translation)}</p>` : ''}
             <div class="tap-counter" id="tap-count">${total - count}</div>
             <p class="tap-total">remaining of ${total}</p>
             <button class="btn-tap" id="btn-tap">☽</button>
@@ -359,12 +386,15 @@ function exitPlayer() {
 
 function escapeHtml(str) {
     if (!str) return '';
-    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
-function escapeAttr(str) {
-    if (!str) return '';
-    return str.replace(/'/g, "\\'");
+function debounce(fn, delay) {
+    let timer;
+    return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn(...args), delay);
+    };
 }
 
 // ─── INIT ────────────────────────────────────────────────────────────────────

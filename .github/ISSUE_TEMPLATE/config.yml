@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: General discussion
+    url: https://github.com/mammer55-cloud/litany/discussions
+    about: Questions, ideas, and general conversation about Litany
