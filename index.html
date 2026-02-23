@@ -10,8 +10,6 @@
 </head>
 <body class="mode-night">
 
-    <button id="theme-toggle" class="theme-toggle" aria-label="Toggle light mode">☀️ Light</button>
-
     <div class="orb orb-sun"  id="orb-sun"></div>
     <div class="orb orb-moon" id="orb-moon"></div>
 
@@ -71,63 +69,10 @@
         </div>
     </div>
 
-    <!-- Clone preset modal -->
-    <div id="clone-preset-modal" class="bottom-modal-overlay">
-        <div class="bottom-modal">
-            <h2 class="modal-heading">Add Preset Litany</h2>
-            <input type="text" id="clone-litany-name" class="modal-input" placeholder="Name for My Litanies" />
-            <div class="modal-actions">
-                <button class="btn-play btn-secondary" onclick="closeBottomModal('clone-preset-modal')">Cancel</button>
-                <button class="btn-play" id="btn-confirm-clone">Add</button>
-            </div>
-        </div>
-    </div>
-
     <!-- Home Page -->
     <div id="home" class="page active">
         <h1 class="page-title">My Litanies</h1>
         <p id="prayer-status" class="prayer-status">Connecting to sun…</p>
-
-        <div class="card journey-card">
-            <h2 class="card-title">Journey Sequence</h2>
-            <p class="card-sub">Live timer for when to start your sequence</p>
-
-            <div class="journey-row">
-                <label for="journey-deadline">Must start by</label>
-                <input type="datetime-local" id="journey-deadline" class="modal-input" />
-            </div>
-
-            <div class="journey-row journey-preset-row">
-                <label for="journey-preset-select">Preset sequence</label>
-                <div class="journey-preset-controls">
-                    <select id="journey-preset-select" class="modal-input modal-select"></select>
-                    <button id="btn-load-journey-preset" class="btn-add-shop">Load</button>
-                    <button id="btn-save-journey-preset" class="btn-add-shop">Save</button>
-                </div>
-                <input type="text" id="journey-preset-name" class="modal-input" placeholder="Preset name for Save" />
-            </div>
-
-            <div id="journey-steps" class="journey-steps"></div>
-
-            <div class="journey-add">
-                <input type="text" id="journey-step-name" class="modal-input" placeholder="Step name (e.g. Drive to masjid)" />
-                <input type="number" id="journey-step-minutes" class="modal-input" min="1" value="7" placeholder="Minutes" />
-                <button id="btn-add-journey-step" class="btn-play">+ Add Step</button>
-            </div>
-
-            <div class="journey-actions">
-                <button id="btn-start-journey" class="btn-play">Start Journey</button>
-                <button id="btn-next-step" class="btn-play btn-secondary">Next Step</button>
-                <button id="btn-reset-journey" class="btn-play btn-secondary">Reset</button>
-            </div>
-
-            <div class="journey-timer-box">
-                <p class="journey-label">Set phone timer for</p>
-                <p id="journey-live-timer" class="journey-live-timer">0:00</p>
-                <p id="journey-live-summary" class="journey-live-summary">Add steps and a deadline to begin.</p>
-            </div>
-        </div>
-
         <button class="btn-new-litany" onclick="openNewLitanyModal()">+ New Litany</button>
         <div id="roster-list"></div>
     </div>
