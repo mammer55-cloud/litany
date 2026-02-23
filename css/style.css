@@ -167,6 +167,8 @@ body.mode-night { --text: #ffffff; --glass: rgba(255, 255, 255, 0.08); --border:
 .card-desc { opacity: 0.5; font-size: 0.8rem; margin: 0 0 4px 0; }
 .card-sub  { opacity: 0.4; font-size: 0.75rem; margin: 0 0 14px 0; text-transform: uppercase; letter-spacing: 0.5px; }
 .card-header-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 14px; }
+.card-footer-row { display: flex; gap: 8px; align-items: center; }
+.card-footer-row .btn-play { flex: 1; }
 
 /* Delete litany button */
 .btn-delete-litany {
@@ -185,6 +187,23 @@ body.mode-night { --text: #ffffff; --glass: rgba(255, 255, 255, 0.08); --border:
 }
 .btn-delete-litany:hover { background: rgba(220,50,50,0.2); color: #e05555; border-color: #e05555; }
 
+/* Manage blocks button */
+.btn-manage-litany {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border);
+    color: inherit;
+    padding: 12px 16px;
+    border-radius: 18px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    white-space: nowrap;
+    transition: background 0.15s;
+    opacity: 0.7;
+}
+.btn-manage-litany:hover { background: rgba(255,255,255,0.12); opacity: 1; }
+
 /* ── New Litany button ── */
 .btn-new-litany {
     width: 100%;
@@ -202,6 +221,11 @@ body.mode-night { --text: #ffffff; --glass: rgba(255, 255, 255, 0.08); --border:
 }
 .btn-new-litany:hover { background: rgba(243, 156, 18, 0.2); }
 
+/* Empty state */
+.empty-state { text-align: center; padding: 48px 20px; }
+.empty-title { font-weight: 200; font-size: 1.1rem; margin: 0 0 8px; }
+.empty-sub { opacity: 0.4; font-size: 0.82rem; margin: 0; line-height: 1.7; }
+
 .arabic { font-family: 'Amiri', serif; font-size: 2.3rem; direction: rtl; text-align: center; margin: 15px 0; line-height: 1.7; color: inherit; }
 .btn-play { background: var(--gold); color: #000; border: none; padding: 16px; border-radius: 22px; font-weight: 600; width: 100%; cursor: pointer; font-size: 1rem; font-family: inherit; }
 .btn-play:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -210,7 +234,6 @@ body.mode-night { --text: #ffffff; --glass: rgba(255, 255, 255, 0.08); --border:
 .loading-text { opacity: 0.4; font-size: 0.85rem; text-align: center; padding: 40px 0; }
 
 /* ── Player page ── */
-/* overflow: hidden prevents tap mode from scrolling */
 .player-page { padding: 0; background: #000; overflow: hidden; }
 .btn-exit {
     position: fixed;
@@ -234,7 +257,6 @@ body.mode-night { --text: #ffffff; --glass: rgba(255, 255, 255, 0.08); --border:
     justify-content: center;
     align-items: center;
     scroll-snap-align: center;
-    /* invisible by default — only the active (centered) row shows */
     opacity: 0;
     transition: opacity 0.6s ease, transform 0.6s ease;
     text-align: center;
@@ -244,6 +266,33 @@ body.mode-night { --text: #ffffff; --glass: rgba(255, 255, 255, 0.08); --border:
 }
 .dhikr-row.active { opacity: 1; transform: scale(1.03); }
 .dhikr-counter { opacity: 0.35; font-size: 0.8rem; margin-top: 12px; }
+
+/* Flow row extras */
+.flow-block-title {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--gold);
+    opacity: 0.8;
+    margin: 0 0 14px;
+}
+.flow-translit {
+    font-style: italic;
+    opacity: 0.45;
+    font-size: 0.8rem;
+    margin: 6px 0 0;
+    max-width: 320px;
+    text-align: center;
+    line-height: 1.6;
+}
+
+/* Flow completion row */
+.done-row { background: #000; }
+.flow-complete { text-align: center; }
+.flow-complete-check { font-size: 2.5rem; color: var(--gold); margin: 0 0 12px; }
+.flow-complete-label { font-weight: 200; font-size: 1.4rem; margin: 0; color: rgba(255,255,255,0.8); }
+
 .center-line {
     position: fixed;
     top: 50%; left: 10%;
@@ -269,6 +318,21 @@ body.mode-night { --text: #ffffff; --glass: rgba(255, 255, 255, 0.08); --border:
     overflow: hidden;
     gap: 0;
 }
+
+/* Tap progress bar — pinned to top of tap-view */
+.tap-progress-bar-wrap {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: rgba(255,255,255,0.08);
+}
+.tap-progress-bar-fill {
+    height: 100%;
+    background: var(--gold);
+    transition: width 0.25s ease;
+    border-radius: 0 2px 2px 0;
+}
+
 .tap-progress {
     font-size: 0.78rem;
     font-weight: 600;
@@ -283,11 +347,20 @@ body.mode-night { --text: #ffffff; --glass: rgba(255, 255, 255, 0.08); --border:
     direction: rtl;
     line-height: 1.75;
     color: #fff;
-    margin: 0 0 12px;
+    margin: 0 0 8px;
+}
+.tap-translit {
+    font-style: italic;
+    opacity: 0.5;
+    font-size: 0.78rem;
+    color: rgba(255,255,255,0.7);
+    line-height: 1.5;
+    margin: 0 0 8px;
+    max-width: 340px;
 }
 .tap-translation {
     font-size: 0.82rem;
-    color: rgba(255,255,255,0.65);
+    color: rgba(255,255,255,0.5);
     line-height: 1.5;
     margin: 0 0 20px;
     max-width: 340px;
@@ -313,15 +386,54 @@ body.mode-night { --text: #ffffff; --glass: rgba(255, 255, 255, 0.08); --border:
     transition: transform 0.1s ease, box-shadow 0.1s ease;
     box-shadow: 0 0 50px rgba(243, 156, 18, 0.35);
     flex-shrink: 0;
-    /* no icon — pure circle */
 }
 .btn-tap:active { transform: scale(0.91); box-shadow: 0 0 20px rgba(243, 156, 18, 0.2); }
 
-/* Complete screen */
-.complete-screen { text-align: center; }
-.complete-icon { font-size: 2rem; margin: 0 0 15px 0; }
-.complete-label { font-weight: 200; font-size: 1.3rem; }
-.btn-done { margin-top: 30px; width: auto; padding: 16px 40px; }
+/* Completion screen */
+.complete-screen {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+}
+.complete-checkmark {
+    font-size: 2.8rem;
+    color: var(--gold);
+    margin: 0 0 10px;
+    line-height: 1;
+}
+.complete-label { font-weight: 200; font-size: 1.5rem; margin: 0 0 28px; }
+.complete-stats {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    margin-bottom: 36px;
+}
+.stat-block { text-align: center; }
+.stat-value { display: block; font-size: 2rem; font-weight: 200; color: var(--gold); line-height: 1.1; }
+.stat-label { display: block; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 1px; opacity: 0.4; margin-top: 4px; }
+.stat-divider { width: 1px; height: 44px; background: var(--border); }
+.btn-done { width: auto; padding: 16px 44px; }
+
+/* ── Shop search ── */
+.shop-search-input {
+    width: 100%;
+    background: var(--glass);
+    border: 1px solid var(--border);
+    color: inherit;
+    border-radius: 16px;
+    padding: 11px 16px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    outline: none;
+    box-sizing: border-box;
+    -webkit-appearance: none;
+    margin-bottom: 20px;
+    transition: border-color 0.15s;
+}
+.shop-search-input:focus { border-color: var(--gold); }
+.shop-search-input::placeholder { opacity: 0.35; }
 
 /* ── Shop ── */
 .shop-category { margin-bottom: 10px; }
@@ -360,6 +472,67 @@ body.mode-night { --text: #ffffff; --glass: rgba(255, 255, 255, 0.08); --border:
     flex-shrink: 0;
 }
 .btn-add-shop:hover { background: rgba(243, 156, 18, 0.15); }
+
+/* ── Blocks Modal ── */
+.block-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+}
+.block-row:last-child { border-bottom: none; }
+.block-row-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+}
+.block-row-num {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.68rem;
+    flex-shrink: 0;
+    color: rgba(255,255,255,0.45);
+}
+.block-row-info {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+}
+.block-row-title {
+    font-size: 0.88rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+}
+.block-row-count {
+    font-size: 0.75rem;
+    color: var(--gold);
+    opacity: 0.85;
+    flex-shrink: 0;
+}
+.btn-delete-block {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border);
+    color: rgba(255,255,255,0.35);
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    font-size: 0.65rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, color 0.15s;
+    font-family: inherit;
+    padding: 0;
+    margin-left: 8px;
+}
+.btn-delete-block:hover { background: rgba(220,50,50,0.2); color: #e05555; border-color: #e05555; }
 
 /* ── Bottom modals ── */
 .bottom-modal-overlay {

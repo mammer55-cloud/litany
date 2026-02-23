@@ -14,6 +14,20 @@ async function init() {
     updateSunGradient();
     loadRoster();
     bindStaticListeners();
+    cleanupOldSessions();
+}
+
+// ─── SESSION CLEANUP ─────────────────────────────────────────────────────────
+
+async function cleanupOldSessions() {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 7);
+    try {
+        await client.from('litany_sessions')
+            .delete()
+            .eq('is_completed', true)
+            .lt('last_active', cutoff.toISOString());
+    } catch (_) {}
 }
 
 // ─── THEME: SUN-SWEEP GRADIENT ───────────────────────────────────────────────
@@ -90,12 +104,20 @@ function bindStaticListeners() {
     document.getElementById('btn-cancel-intent').addEventListener('click', closeIntent);
     document.getElementById('btn-exit-player').addEventListener('click', exitPlayer);
 
-    // Roster: event delegation for play + delete
+    // Roster: event delegation for play + delete + manage
     document.getElementById('roster-list').addEventListener('click', e => {
         const play = e.target.closest('.btn-open-litany');
         if (play) { openIntent(play.dataset.id, play.dataset.name); return; }
         const del = e.target.closest('.btn-delete-litany');
-        if (del) deleteLitany(del.dataset.id, del.dataset.name);
+        if (del) { deleteLitany(del.dataset.id, del.dataset.name); return; }
+        const manage = e.target.closest('.btn-manage-litany');
+        if (manage) openBlocksModal(manage.dataset.id, manage.dataset.name);
+    });
+
+    // Blocks modal: delegate delete per block
+    document.getElementById('blocks-list').addEventListener('click', e => {
+        const del = e.target.closest('.btn-delete-block');
+        if (del) deleteBlockFromLitany(del.dataset.sid, del.dataset.lid);
     });
 
     // Intent chips
@@ -107,7 +129,7 @@ function bindStaticListeners() {
         chip.classList.add('active');
     });
 
-    // New intention: reveal time + save fields when user types label
+    // New intention: reveal extra fields when user types
     document.getElementById('new-intent-label').addEventListener('input', e => {
         const hasText = e.target.value.trim().length > 0;
         document.getElementById('new-intent-time').classList.toggle('hidden', !hasText);
@@ -115,6 +137,20 @@ function bindStaticListeners() {
     });
 
     document.getElementById('btn-start-fresh').addEventListener('click', dismissAndStartFresh);
+
+    // Shop search
+    document.getElementById('shop-search').addEventListener('input', e => {
+        const q = e.target.value.toLowerCase().trim();
+        document.querySelectorAll('#shop-list .shop-category').forEach(cat => {
+            let anyVisible = false;
+            cat.querySelectorAll('.card').forEach(card => {
+                const match = !q || card.textContent.toLowerCase().includes(q);
+                card.style.display = match ? '' : 'none';
+                if (match) anyVisible = true;
+            });
+            cat.style.display = anyVisible ? '' : 'none';
+        });
+    });
 
     document.querySelectorAll('.bottom-modal-overlay').forEach(overlay => {
         overlay.addEventListener('click', e => {
@@ -127,7 +163,7 @@ function bindStaticListeners() {
 
 async function loadRoster() {
     const list = document.getElementById('roster-list');
-    list.innerHTML = '<p class="loading-text">Loading…</p>';
+    list.innerHTML = '<p class="loading-text">Loading\u2026</p>';
     try {
         const { data, error } = await client
             .from('litanies')
@@ -137,7 +173,11 @@ async function loadRoster() {
         if (error) throw error;
         allLitanies = data || [];
         if (!data || data.length === 0) {
-            list.innerHTML = '<p class="loading-text">No litanies yet. Create one above, or add from the Shop.</p>';
+            list.innerHTML = `
+                <div class="empty-state">
+                    <p class="empty-title">No litanies yet.</p>
+                    <p class="empty-sub">Create one above, or clone a curated set from the Shop.</p>
+                </div>`;
             return;
         }
         list.innerHTML = data.map(lit => {
@@ -151,13 +191,66 @@ async function loadRoster() {
                         ${lit.description ? `<p class="card-desc">${escapeHtml(lit.description)}</p>` : ''}
                         <p class="card-sub">${sub}</p>
                     </div>
-                    <button class="btn-delete-litany" data-id="${escapeHtml(lit.id)}" data-name="${escapeHtml(lit.name)}" aria-label="Delete">✕</button>
+                    <button class="btn-delete-litany" data-id="${escapeHtml(lit.id)}" data-name="${escapeHtml(lit.name)}" aria-label="Delete">&#x2715;</button>
                 </div>
-                <button class="btn-play btn-open-litany" data-id="${escapeHtml(lit.id)}" data-name="${escapeHtml(lit.name)}">Play</button>
+                <div class="card-footer-row">
+                    <button class="btn-manage-litany" data-id="${escapeHtml(lit.id)}" data-name="${escapeHtml(lit.name)}">Manage</button>
+                    <button class="btn-play btn-open-litany" data-id="${escapeHtml(lit.id)}" data-name="${escapeHtml(lit.name)}">Play</button>
+                </div>
             </div>`;
         }).join('');
     } catch (err) {
         list.innerHTML = '<p class="loading-text">Failed to load. Check connection.</p>';
+    }
+}
+
+// ─── MANAGE BLOCKS MODAL ─────────────────────────────────────────────────────
+
+async function openBlocksModal(litanyId, litanyName) {
+    document.getElementById('blocks-modal-title').innerText = litanyName;
+    const list = document.getElementById('blocks-list');
+    list.innerHTML = '<p class="loading-text">Loading\u2026</p>';
+    openBottomModal('blocks-modal');
+
+    try {
+        const { data, error } = await client
+            .from('litany_structure')
+            .select('id, order_index, user_count, adhkar_blocks(title, arabic)')
+            .eq('litany_id', litanyId)
+            .order('order_index');
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+            list.innerHTML = '<p class="loading-text">No blocks yet. Add from the Shop.</p>';
+            return;
+        }
+        list.innerHTML = data.map((s, i) => `
+            <div class="block-row">
+                <div class="block-row-left">
+                    <span class="block-row-num">${i + 1}</span>
+                    <div class="block-row-info">
+                        <span class="block-row-title">${escapeHtml(s.adhkar_blocks?.title || 'Unknown')}</span>
+                        <span class="block-row-count">${s.user_count}&times;</span>
+                    </div>
+                </div>
+                <button class="btn-delete-block" data-sid="${s.id}" data-lid="${escapeHtml(litanyId)}" aria-label="Remove">&#x2715;</button>
+            </div>
+        `).join('');
+    } catch (err) {
+        list.innerHTML = '<p class="loading-text">Failed to load blocks.</p>';
+    }
+}
+
+async function deleteBlockFromLitany(structureId, litanyId) {
+    try {
+        const { error } = await client.from('litany_structure').delete().eq('id', structureId);
+        if (error) throw error;
+        const name = document.getElementById('blocks-modal-title').innerText;
+        await openBlocksModal(litanyId, name);
+        loadRoster();
+        showToast('Block removed');
+    } catch (err) {
+        showToast('Could not remove block');
     }
 }
 
@@ -200,7 +293,8 @@ async function createLitany() {
 
 async function loadShop() {
     const list = document.getElementById('shop-list');
-    list.innerHTML = '<p class="loading-text">Loading…</p>';
+    list.innerHTML = '<p class="loading-text">Loading\u2026</p>';
+    document.getElementById('shop-search').value = '';
     try {
         const [{ data: presets }, { data: blocks }] = await Promise.all([
             client.from('litanies')
@@ -218,7 +312,7 @@ async function loadShop() {
             html += presets.map(lit => {
                 const count = lit.litany_structure?.[0]?.count ?? 0;
                 const pills = (lit.litany_schedules || []).map(s =>
-                    `<span class="schedule-pill">${escapeHtml(s.label)}${s.time_hint ? ` · ${escapeHtml(s.time_hint)}` : ''}</span>`
+                    `<span class="schedule-pill">${escapeHtml(s.label)}${s.time_hint ? ` &middot; ${escapeHtml(s.time_hint)}` : ''}</span>`
                 ).join('');
                 return `
                 <div class="card featured-litany-card">
@@ -270,7 +364,6 @@ async function loadShop() {
 
         list.innerHTML = html || '<p class="loading-text">Nothing here yet.</p>';
 
-        // Wire preset buttons after render
         list.querySelectorAll('.btn-clone-preset').forEach(btn => {
             btn.addEventListener('click', () => clonePresetToMyLitanies(btn.dataset.id, btn.dataset.name));
         });
@@ -288,12 +381,10 @@ async function clonePresetToMyLitanies(presetId, presetName) {
     const name = prompt(`Add to My Litanies as:`, presetName);
     if (!name) return;
 
-    // 1. Create new personal litany
     const { data: newLit, error: litErr } = await client
         .from('litanies').insert({ name, is_preset: false }).select().single();
     if (litErr) { alert('Could not add litany.'); return; }
 
-    // 2. Copy structure blocks
     const { data: structure } = await client
         .from('litany_structure').select('block_id, order_index, user_count')
         .eq('litany_id', presetId);
@@ -399,7 +490,8 @@ async function openIntent(id, name) {
                 ${s.time_hint ? `<br><small>${escapeHtml(s.time_hint)}</small>` : ''}
              </div>`
         );
-        chips.push(`<div class="intent-chip" data-label="Freestyle">Freestyle<br><small>Anytime</small></div>`);
+        // Freestyle is always last and pre-selected
+        chips.push(`<div class="intent-chip active" data-label="Freestyle">Freestyle<br><small>Anytime</small></div>`);
         grid.innerHTML = chips.join('');
     } catch (err) {}
 }
@@ -432,7 +524,7 @@ async function saveNewIntention() {
             ${s.time_hint ? `<br><small>${escapeHtml(s.time_hint)}</small>` : ''}
          </div>`
     );
-    chips.push(`<div class="intent-chip" data-label="Freestyle">Freestyle<br><small>Anytime</small></div>`);
+    chips.push(`<div class="intent-chip active" data-label="Freestyle">Freestyle<br><small>Anytime</small></div>`);
     document.getElementById('intent-options').innerHTML = chips.join('');
     showToast(`Intention "${label}" saved`);
 }
@@ -468,7 +560,6 @@ async function createNewSession(mode) {
 
 async function launchSession(session) {
     closeIntent();
-    // Show player page first, then hide nav (showPage re-shows nav, so hide after)
     showPage('player');
     document.getElementById('main-nav').classList.add('hidden');
 
@@ -498,7 +589,6 @@ async function launchSession(session) {
 function runFlow(data, session) {
     if (flowObserver) { flowObserver.disconnect(); flowObserver = null; }
 
-    // Show center line for flow, hide tap view
     document.querySelector('.center-line').style.display = '';
     const view = document.getElementById('player-view');
     view.style.height = '100vh';
@@ -509,28 +599,52 @@ function runFlow(data, session) {
     if (tapView) tapView.style.display = 'none';
 
     data.forEach((item, bIdx) => {
+        const block = item.adhkar_blocks;
         for (let i = 1; i <= item.user_count; i++) {
             const row     = document.createElement('div');
             row.className = 'dhikr-row';
             row.dataset.idx = bIdx;
             row.dataset.cnt = i;
             row.innerHTML = `
-                <div class="arabic">${escapeHtml(item.adhkar_blocks.arabic)}</div>
+                ${block.title ? `<p class="flow-block-title">${escapeHtml(block.title)}</p>` : ''}
+                <div class="arabic">${block.arabic}</div>
+                ${block.transliteration ? `<p class="flow-translit">${escapeHtml(block.transliteration)}</p>` : ''}
                 <div class="dhikr-counter">${i} / ${item.user_count}</div>
             `;
             view.appendChild(row);
         }
     });
 
+    // Completion sentinel row
+    const doneRow = document.createElement('div');
+    doneRow.className = 'dhikr-row done-row';
+    doneRow.dataset.done = 'true';
+    doneRow.innerHTML = `
+        <div class="flow-complete">
+            <p class="flow-complete-check">&#x2713;</p>
+            <p class="flow-complete-label">Complete</p>
+        </div>
+    `;
+    view.appendChild(doneRow);
+
     const debouncedSave = debounce(saveProgress, 400);
+    let completed = false;
+
     flowObserver = new IntersectionObserver((entries) => {
         entries.forEach(e => {
             e.target.classList.toggle('active', e.isIntersecting);
-            if (e.isIntersecting) debouncedSave(session.id, e.target.dataset.idx, e.target.dataset.cnt);
+            if (e.isIntersecting) {
+                if (e.target.dataset.done && !completed) {
+                    completed = true;
+                    markCompleted(session.id);
+                } else if (!e.target.dataset.done) {
+                    debouncedSave(session.id, e.target.dataset.idx, e.target.dataset.cnt);
+                }
+            }
         });
     }, { threshold: 0.6 });
 
-    document.querySelectorAll('.dhikr-row').forEach(r => flowObserver.observe(r));
+    view.querySelectorAll('.dhikr-row').forEach(r => flowObserver.observe(r));
 }
 
 // ─── TAP MODE ────────────────────────────────────────────────────────────────
@@ -538,7 +652,6 @@ function runFlow(data, session) {
 function runTap(data, session) {
     if (flowObserver) { flowObserver.disconnect(); flowObserver = null; }
 
-    // Hide flow-specific elements
     document.querySelector('.center-line').style.display = 'none';
     const view = document.getElementById('player-view');
     view.style.height = '0';
@@ -556,13 +669,37 @@ function runTap(data, session) {
     let blockIndex = session.current_block_index || 0;
     let count      = session.current_count      || 0;
 
+    const totalReps = data.reduce((sum, item) => sum + item.user_count, 0);
+
+    function completedRepsUpTo(bIdx, cnt) {
+        let done = 0;
+        for (let i = 0; i < bIdx; i++) done += data[i].user_count;
+        return done + cnt;
+    }
+
     function render() {
         if (blockIndex >= data.length) {
             markCompleted(session.id);
+            const elapsed = Math.round((Date.now() - new Date(session.start_time).getTime()) / 1000);
+            const mins = Math.floor(elapsed / 60);
+            const secs = elapsed % 60;
+            const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+
             tapView.innerHTML = `
                 <div class="complete-screen">
-                    <p class="complete-icon">✓</p>
-                    <p class="complete-label">Litany complete</p>
+                    <div class="complete-checkmark">&#x2713;</div>
+                    <p class="complete-label">Complete</p>
+                    <div class="complete-stats">
+                        <div class="stat-block">
+                            <span class="stat-value">${totalReps}</span>
+                            <span class="stat-label">repetitions</span>
+                        </div>
+                        <div class="stat-divider"></div>
+                        <div class="stat-block">
+                            <span class="stat-value">${timeStr}</span>
+                            <span class="stat-label">duration</span>
+                        </div>
+                    </div>
                     <button class="btn-play btn-done">Done</button>
                 </div>`;
             tapView.querySelector('.btn-done').addEventListener('click', exitPlayer);
@@ -572,10 +709,15 @@ function runTap(data, session) {
         const item  = data[blockIndex];
         const block = item.adhkar_blocks;
         const total = item.user_count;
+        const pct   = Math.round((completedRepsUpTo(blockIndex, count) / totalReps) * 100);
 
         tapView.innerHTML = `
+            <div class="tap-progress-bar-wrap">
+                <div class="tap-progress-bar-fill" style="width:${pct}%"></div>
+            </div>
             <p class="tap-progress">Block ${blockIndex + 1} of ${data.length}</p>
-            <div class="arabic tap-arabic">${escapeHtml(block.arabic)}</div>
+            <div class="arabic tap-arabic">${block.arabic}</div>
+            ${block.transliteration ? `<p class="tap-translit">${escapeHtml(block.transliteration)}</p>` : ''}
             ${block.translation ? `<p class="tap-translation">${escapeHtml(block.translation)}</p>` : ''}
             <div class="tap-counter" id="tap-count">${total - count}</div>
             <p class="tap-total">remaining of ${total}</p>
@@ -583,6 +725,7 @@ function runTap(data, session) {
         `;
 
         document.getElementById('btn-tap').addEventListener('click', () => {
+            navigator.vibrate?.(15);
             count++;
             if (count >= total) {
                 saveProgress(session.id, blockIndex, count);
@@ -591,6 +734,9 @@ function runTap(data, session) {
                 render();
             } else {
                 document.getElementById('tap-count').innerText = total - count;
+                const newPct = Math.round((completedRepsUpTo(blockIndex, count) / totalReps) * 100);
+                const bar = tapView.querySelector('.tap-progress-bar-fill');
+                if (bar) bar.style.width = newPct + '%';
                 saveProgress(session.id, blockIndex, count);
             }
         });
@@ -616,7 +762,6 @@ async function markCompleted(sId) {
 function exitPlayer() {
     if (flowObserver) { flowObserver.disconnect(); flowObserver = null; }
 
-    // Reset player state
     const tapView = document.getElementById('tap-view');
     if (tapView) tapView.style.display = 'none';
     const view = document.getElementById('player-view');

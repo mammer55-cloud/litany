@@ -22,7 +22,7 @@
             <div class="intent-grid" id="intent-options"></div>
 
             <div id="intent-add-row" class="intent-add-row">
-                <input type="text" id="new-intent-label" class="intent-add-input" placeholder="+ New intention label…" />
+                <input type="text" id="new-intent-label" class="intent-add-input" placeholder="+ New intention label&hellip;" />
                 <input type="text" id="new-intent-time" class="intent-add-input intent-add-time hidden" placeholder="Time hint (e.g. After Fajr)" />
                 <button class="btn-intent-save hidden" id="btn-save-intent" onclick="saveNewIntention()">Save</button>
             </div>
@@ -69,10 +69,21 @@
         </div>
     </div>
 
+    <!-- Manage Blocks Modal -->
+    <div id="blocks-modal" class="bottom-modal-overlay">
+        <div class="bottom-modal">
+            <h2 class="modal-heading" id="blocks-modal-title">Manage Blocks</h2>
+            <div id="blocks-list"></div>
+            <div class="modal-actions" style="margin-top:16px">
+                <button class="btn-play btn-secondary" onclick="closeBottomModal('blocks-modal')">Done</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Home Page -->
     <div id="home" class="page active">
         <h1 class="page-title">My Litanies</h1>
-        <p id="prayer-status" class="prayer-status">Connecting to sun…</p>
+        <p id="prayer-status" class="prayer-status">Connecting to sun&hellip;</p>
         <button class="btn-new-litany" onclick="openNewLitanyModal()">+ New Litany</button>
         <div id="roster-list"></div>
     </div>
@@ -81,6 +92,7 @@
     <div id="shop" class="page">
         <h1 class="page-title">Shop</h1>
         <p class="prayer-status">Browse adhkar and add to your litanies</p>
+        <input type="search" id="shop-search" class="shop-search-input" placeholder="Search adhkar&hellip;" />
         <div id="shop-list"></div>
     </div>
 
@@ -88,7 +100,7 @@
     <div id="player" class="page player-page">
         <div class="center-line"></div>
         <div id="player-view"></div>
-        <button id="btn-exit-player" class="btn-exit" aria-label="Exit player">✕</button>
+        <button id="btn-exit-player" class="btn-exit" aria-label="Exit player">&#x2715;</button>
     </div>
 
     <!-- Bottom Navigation -->
