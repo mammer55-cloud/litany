@@ -7,6 +7,24 @@ let flowObserver      = null;
 let pendingBlockId    = null;
 let pendingBlockTitle = null;
 let allLitanies       = [];
+let isManualLightMode = false;
+let journeyTimerInterval = null;
+let clonePresetContext = null;
+
+const JOURNEY_STORAGE_KEY = 'litanyJourneyState';
+const JOURNEY_PRESETS_KEY = 'litanyJourneyPresets';
+
+let journeyState = {
+    deadlineIso: '',
+    isRunning: false,
+    currentStepIndex: 0,
+    startedAt: null,
+    steps: [
+        { name: 'Get dressed', minutes: 7 },
+        { name: 'Drive to masjid', minutes: 7 },
+        { name: 'Fajr sunnah', minutes: 7 }
+    ]
+};
 
 // ─── BOOT ────────────────────────────────────────────────────────────────────
 
@@ -14,6 +32,8 @@ async function init() {
     updateSunGradient();
     loadRoster();
     bindStaticListeners();
+    initThemeToggle();
+    initJourneyPlanner();
 }
 
 // ─── THEME: SUN-SWEEP GRADIENT ───────────────────────────────────────────────
@@ -46,7 +66,7 @@ async function updateSunGradient() {
             const cur = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
 
             const isDay = cur >= data.timings.Fajr && cur < data.timings.Maghrib;
-            document.body.className = isDay ? 'mode-day' : 'mode-night';
+            if (!isManualLightMode) document.body.className = isDay ? 'mode-day' : 'mode-night';
 
             const hue = isDay ? 45 : 240;
             const lightness = isDay ? (95 - (h % 12)) : (5 + (h % 12));
@@ -115,6 +135,17 @@ function bindStaticListeners() {
     });
 
     document.getElementById('btn-start-fresh').addEventListener('click', dismissAndStartFresh);
+
+    document.getElementById('theme-toggle').addEventListener('click', toggleThemeMode);
+    document.getElementById('btn-add-journey-step').addEventListener('click', addJourneyStep);
+    document.getElementById('btn-start-journey').addEventListener('click', startJourney);
+    document.getElementById('btn-next-step').addEventListener('click', advanceJourneyStep);
+    document.getElementById('btn-reset-journey').addEventListener('click', resetJourney);
+    document.getElementById('btn-load-journey-preset').addEventListener('click', loadSelectedJourneyPreset);
+    document.getElementById('btn-save-journey-preset').addEventListener('click', saveCurrentJourneyPreset);
+    document.getElementById('journey-deadline').addEventListener('change', onJourneyDeadlineChange);
+
+    document.getElementById('btn-confirm-clone').addEventListener('click', confirmClonePreset);
 
     document.querySelectorAll('.bottom-modal-overlay').forEach(overlay => {
         overlay.addEventListener('click', e => {
@@ -284,16 +315,28 @@ async function loadShop() {
 }
 
 // Clone a curated litany into the user's personal collection
-async function clonePresetToMyLitanies(presetId, presetName) {
-    const name = prompt(`Add to My Litanies as:`, presetName);
-    if (!name) return;
+function clonePresetToMyLitanies(presetId, presetName) {
+    clonePresetContext = { presetId, presetName };
+    document.getElementById('clone-litany-name').value = presetName;
+    openBottomModal('clone-preset-modal');
+    setTimeout(() => document.getElementById('clone-litany-name').focus(), 100);
+}
 
-    // 1. Create new personal litany
+async function confirmClonePreset() {
+    if (!clonePresetContext) return;
+
+    const name = document.getElementById('clone-litany-name').value.trim();
+    if (!name) {
+        showToast('Please enter a name first');
+        return;
+    }
+
+    const { presetId } = clonePresetContext;
+
     const { data: newLit, error: litErr } = await client
         .from('litanies').insert({ name, is_preset: false }).select().single();
-    if (litErr) { alert('Could not add litany.'); return; }
+    if (litErr) { showToast('Could not add litany'); return; }
 
-    // 2. Copy structure blocks
     const { data: structure } = await client
         .from('litany_structure').select('block_id, order_index, user_count')
         .eq('litany_id', presetId);
@@ -309,6 +352,8 @@ async function clonePresetToMyLitanies(presetId, presetName) {
         );
     }
 
+    closeBottomModal('clone-preset-modal');
+    clonePresetContext = null;
     showToast(`"${name}" added to My Litanies`);
     showPage('home');
 }
@@ -639,6 +684,290 @@ function showToast(msg) {
     toast.classList.add('show');
     clearTimeout(toast._timer);
     toast._timer = setTimeout(() => toast.classList.remove('show'), 2200);
+}
+
+
+// ─── THEME TOGGLE ─────────────────────────────────────────────────────────────
+
+function initThemeToggle() {
+    const saved = localStorage.getItem('litanyThemeMode');
+    if (saved === 'light') {
+        isManualLightMode = true;
+        document.body.className = 'mode-day mode-manual-light';
+    }
+    updateThemeToggleLabel();
+}
+
+function toggleThemeMode() {
+    isManualLightMode = !isManualLightMode;
+    if (isManualLightMode) {
+        document.body.className = 'mode-day mode-manual-light';
+        localStorage.setItem('litanyThemeMode', 'light');
+    } else {
+        localStorage.removeItem('litanyThemeMode');
+        document.body.classList.remove('mode-manual-light');
+        updateSunGradient();
+    }
+    updateThemeToggleLabel();
+}
+
+function updateThemeToggleLabel() {
+    const btn = document.getElementById('theme-toggle');
+    if (!btn) return;
+    btn.textContent = isManualLightMode ? '🌙 Auto' : '☀️ Light';
+}
+
+// ─── JOURNEY PLANNER ─────────────────────────────────────────────────────────
+
+function initJourneyPlanner() {
+    hydrateJourneyState();
+    renderJourneySteps();
+    renderJourneyPresetOptions();
+    startJourneyTicker();
+}
+
+function hydrateJourneyState() {
+    try {
+        const raw = localStorage.getItem(JOURNEY_STORAGE_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed.steps)) return;
+        journeyState = {
+            ...journeyState,
+            ...parsed,
+            steps: parsed.steps.filter(s => s && s.name && Number(s.minutes) > 0).map(s => ({
+                name: String(s.name),
+                minutes: Number(s.minutes)
+            }))
+        };
+    } catch (_) {}
+}
+
+function persistJourneyState() {
+    localStorage.setItem(JOURNEY_STORAGE_KEY, JSON.stringify(journeyState));
+}
+
+function renderJourneySteps() {
+    const wrap = document.getElementById('journey-steps');
+    const deadlineInput = document.getElementById('journey-deadline');
+    deadlineInput.value = journeyState.deadlineIso ? toDateInputValue(journeyState.deadlineIso) : '';
+
+    if (!journeyState.steps.length) {
+        wrap.innerHTML = '<p class="loading-text" style="padding:8px 0">No steps yet.</p>';
+        updateJourneyDisplay();
+        return;
+    }
+
+    wrap.innerHTML = journeyState.steps.map((step, idx) => {
+        const done = journeyState.isRunning && idx < journeyState.currentStepIndex;
+        const active = journeyState.isRunning && idx === journeyState.currentStepIndex;
+        return `
+            <div class="journey-step ${done ? 'done' : ''} ${active ? 'active' : ''}">
+                <div>
+                    <p class="journey-step-name">${escapeHtml(step.name)}</p>
+                    <p class="journey-step-minutes">${step.minutes} min</p>
+                </div>
+                <button class="btn-delete-step" data-step-index="${idx}" aria-label="Remove step">✕</button>
+            </div>`;
+    }).join('');
+
+    wrap.querySelectorAll('.btn-delete-step').forEach(btn => {
+        btn.addEventListener('click', () => removeJourneyStep(parseInt(btn.dataset.stepIndex, 10)));
+    });
+
+    updateJourneyDisplay();
+}
+
+function addJourneyStep() {
+    const nameInput = document.getElementById('journey-step-name');
+    const minutesInput = document.getElementById('journey-step-minutes');
+    const name = nameInput.value.trim();
+    const minutes = parseInt(minutesInput.value, 10);
+    if (!name || !minutes || minutes < 1) {
+        showToast('Add a valid step name + minutes');
+        return;
+    }
+    journeyState.steps.push({ name, minutes });
+    nameInput.value = '';
+    minutesInput.value = '7';
+    persistJourneyState();
+    renderJourneySteps();
+}
+
+function removeJourneyStep(index) {
+    journeyState.steps = journeyState.steps.filter((_, idx) => idx !== index);
+    if (journeyState.currentStepIndex >= journeyState.steps.length) {
+        journeyState.currentStepIndex = Math.max(0, journeyState.steps.length - 1);
+    }
+    persistJourneyState();
+    renderJourneySteps();
+}
+
+function onJourneyDeadlineChange(e) {
+    journeyState.deadlineIso = e.target.value ? new Date(e.target.value).toISOString() : '';
+    persistJourneyState();
+    updateJourneyDisplay();
+}
+
+function startJourney() {
+    if (!journeyState.steps.length) {
+        showToast('Add at least one step to start');
+        return;
+    }
+    journeyState.isRunning = true;
+    journeyState.startedAt = new Date().toISOString();
+    if (journeyState.currentStepIndex >= journeyState.steps.length) journeyState.currentStepIndex = 0;
+    persistJourneyState();
+    renderJourneySteps();
+}
+
+function advanceJourneyStep() {
+    if (!journeyState.steps.length) return;
+    journeyState.isRunning = true;
+    journeyState.currentStepIndex = Math.min(journeyState.currentStepIndex + 1, journeyState.steps.length - 1);
+    persistJourneyState();
+    renderJourneySteps();
+}
+
+function resetJourney() {
+    journeyState.isRunning = false;
+    journeyState.currentStepIndex = 0;
+    journeyState.startedAt = null;
+    persistJourneyState();
+    renderJourneySteps();
+}
+
+function startJourneyTicker() {
+    clearInterval(journeyTimerInterval);
+    journeyTimerInterval = setInterval(updateJourneyDisplay, 1000);
+    updateJourneyDisplay();
+}
+
+function updateJourneyDisplay() {
+    const timerEl = document.getElementById('journey-live-timer');
+    const summaryEl = document.getElementById('journey-live-summary');
+    if (!timerEl || !summaryEl) return;
+
+    const remainingSequenceMinutes = getRemainingSequenceMinutes();
+    const doubledMinutes = remainingSequenceMinutes * 2;
+    const untilStartMinutes = getMinutesUntilDeadline();
+
+    let phoneTimerMinutes = doubledMinutes;
+    if (untilStartMinutes != null) phoneTimerMinutes = Math.max(0, Math.min(doubledMinutes, untilStartMinutes));
+
+    const activeStep = journeyState.steps[journeyState.currentStepIndex];
+    timerEl.textContent = formatMinutes(phoneTimerMinutes);
+
+    const stepText = activeStep ? `Current: ${activeStep.name} (${activeStep.minutes} min)` : 'No active step';
+    const deadlineText = untilStartMinutes == null
+        ? 'No deadline set'
+        : (untilStartMinutes <= 0 ? 'Start now' : `${formatMinutes(untilStartMinutes)} until deadline`);
+
+    summaryEl.textContent = `${stepText} • Remaining sequence ${formatMinutes(remainingSequenceMinutes)} • Doubled return ${formatMinutes(doubledMinutes)} • ${deadlineText}`;
+}
+
+function getRemainingSequenceMinutes() {
+    if (!journeyState.steps.length) return 0;
+    const startIndex = journeyState.isRunning ? journeyState.currentStepIndex : 0;
+    return journeyState.steps.slice(startIndex).reduce((sum, step) => sum + Number(step.minutes || 0), 0);
+}
+
+function getMinutesUntilDeadline() {
+    if (!journeyState.deadlineIso) return null;
+    const diffMs = new Date(journeyState.deadlineIso).getTime() - Date.now();
+    return diffMs / 60000;
+}
+
+function formatMinutes(mins) {
+    const totalSeconds = Math.max(0, Math.round(mins * 60));
+    const m = Math.floor(totalSeconds / 60);
+    const s = totalSeconds % 60;
+    return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+function toDateInputValue(iso) {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    const off = d.getTimezoneOffset();
+    const local = new Date(d.getTime() - off * 60000);
+    return local.toISOString().slice(0, 16);
+}
+
+function getJourneyPresets() {
+    try {
+        const raw = localStorage.getItem(JOURNEY_PRESETS_KEY);
+        const parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (_) {
+        return [];
+    }
+}
+
+function renderJourneyPresetOptions() {
+    const select = document.getElementById('journey-preset-select');
+    if (!select) return;
+    const presets = getJourneyPresets();
+    const defaults = [
+        {
+            id: 'preset-fajr',
+            name: 'Fajr prep',
+            steps: [
+                { name: 'Get dressed', minutes: 7 },
+                { name: 'Drive to masjid', minutes: 7 },
+                { name: 'Fajr sunnah', minutes: 7 }
+            ]
+        },
+        {
+            id: 'preset-class',
+            name: 'Class commute',
+            steps: [
+                { name: 'Drive car to classroom', minutes: 10 },
+                { name: 'Drive home to parking lot', minutes: 25 },
+                { name: 'Get ready to leave', minutes: 20 }
+            ]
+        }
+    ];
+
+    const merged = [...defaults, ...presets];
+    select.innerHTML = merged.map(p => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)}</option>`).join('');
+    select.dataset.options = JSON.stringify(merged);
+}
+
+function loadSelectedJourneyPreset() {
+    const select = document.getElementById('journey-preset-select');
+    const merged = JSON.parse(select.dataset.options || '[]');
+    const preset = merged.find(p => p.id === select.value);
+    if (!preset) return;
+    journeyState.steps = preset.steps.map(s => ({ name: s.name, minutes: Number(s.minutes) }));
+    journeyState.currentStepIndex = 0;
+    journeyState.isRunning = false;
+    journeyState.startedAt = null;
+    persistJourneyState();
+    renderJourneySteps();
+    showToast(`Loaded preset: ${preset.name}`);
+}
+
+function saveCurrentJourneyPreset() {
+    if (!journeyState.steps.length) {
+        showToast('Add steps before saving preset');
+        return;
+    }
+    const input = document.getElementById('journey-preset-name');
+    const label = input.value.trim();
+    if (!label) {
+        showToast('Add a preset name first');
+        return;
+    }
+    const presets = getJourneyPresets();
+    presets.push({
+        id: `custom-${Date.now()}`,
+        name: label,
+        steps: journeyState.steps.map(s => ({ name: s.name, minutes: Number(s.minutes) }))
+    });
+    localStorage.setItem(JOURNEY_PRESETS_KEY, JSON.stringify(presets));
+    input.value = '';
+    renderJourneyPresetOptions();
+    showToast(`Saved preset: ${label}`);
 }
 
 // ─── UTILITIES ───────────────────────────────────────────────────────────────
