@@ -17,13 +17,17 @@ export const db = {
         return data || [];
     },
 
-    async createLitany(name, desc) {
+    async createLitany(name, desc, schedule) {
         const { data, error } = await client
             .from('litanies')
-            .insert({ name, description: desc || null, is_preset: false })
+            .insert({ name, description: desc || null, is_preset: false, schedule: schedule || null })
             .select().single();
         if (error) throw error;
         return data;
+    },
+
+    async updateLitanySchedule(litanyId, schedule) {
+        await client.from('litanies').update({ schedule: schedule || null }).eq('id', litanyId);
     },
 
     async deleteLitany(id) {
@@ -138,13 +142,35 @@ export const db = {
         return data || [];
     },
 
-    async createSession(litanyId, mode, intent) {
+    async createSession(litanyId, mode, intent, sessionType) {
         const { data, error } = await client
             .from('litany_sessions')
-            .insert({ litany_id: litanyId, mode, intent: intent || null })
+            .insert({ litany_id: litanyId, mode, intent: intent || null, session_type: sessionType || 'freestyle' })
             .select().single();
         if (error) throw error;
         return data;
+    },
+
+    async getTodaysSessions() {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const { data, error } = await client
+            .from('litany_sessions')
+            .select('*, litanies(name, schedule)')
+            .gte('start_time', today.toISOString())
+            .order('start_time', { ascending: false });
+        if (error) throw error;
+        return data || [];
+    },
+
+    async getInProgressSessions() {
+        const { data, error } = await client
+            .from('litany_sessions')
+            .select('*, litanies(name, schedule)')
+            .eq('is_completed', false)
+            .order('last_active', { ascending: false });
+        if (error) throw error;
+        return data || [];
     },
 
     async saveProgress(sessionId, blockIdx, count) {

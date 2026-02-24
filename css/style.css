@@ -231,6 +231,143 @@ body.mode-day .nav {
 .resume-actions { display: flex; align-items: center; gap: 10px; }
 .btn-resume-continue { flex: 0 0 auto; width: auto; padding: 12px 24px; }
 
+/* ── Today's Practice Grid ──────────────────────────────────────────────────── */
+.today-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 4px;
+}
+
+.today-card {
+    border-radius: 24px;
+    padding: 18px 16px;
+    display: flex; flex-direction: column; gap: 4px;
+    border: 1px solid var(--border);
+    background: var(--glass);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    min-height: 130px;
+    position: relative;
+    transition: border-color 0.3s, background 0.3s;
+}
+
+/* Highlight the current active period */
+.today-card.is-current {
+    border-color: rgba(243, 156, 18, 0.4);
+    background: rgba(243, 156, 18, 0.06);
+}
+
+/* Morning period — warm amber tint */
+.today-card.today-card-morning.is-done {
+    background: rgba(243, 156, 18, 0.1);
+    border-color: rgba(243, 156, 18, 0.4);
+}
+/* Evening period — cool blue-purple tint */
+.today-card.today-card-evening.is-done {
+    background: rgba(100, 120, 230, 0.12);
+    border-color: rgba(100, 120, 230, 0.4);
+}
+
+.today-period-label {
+    font-size: 0.65rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 1.4px;
+    color: var(--text-dim);
+    margin: 0 0 2px;
+}
+
+/* Completed state */
+.today-checkmark {
+    font-size: 1.6rem;
+    margin: 4px 0 2px;
+    line-height: 1;
+}
+.today-done-litany {
+    font-size: 0.82rem; font-weight: 400;
+    margin: 0; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.today-done-time {
+    font-size: 0.7rem; color: var(--text-dim); margin: 0;
+}
+.today-card-morning.is-done .today-period-label { color: var(--gold); }
+.today-card-evening.is-done .today-period-label { color: #8899ee; }
+
+/* New / ongoing state */
+.today-card-litany {
+    font-size: 0.9rem; font-weight: 400; margin: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.today-card-meta {
+    font-size: 0.7rem; color: var(--text-dim); margin: 0 0 8px;
+}
+.today-mode-row {
+    display: flex; gap: 6px; margin-top: auto;
+}
+.btn-today-mode {
+    flex: 1;
+    background: var(--glass);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 4px; border-radius: 12px;
+    font-size: 0.75rem; font-weight: 600;
+    cursor: pointer; font-family: inherit;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.btn-today-mode:hover { background: var(--gold-dim); border-color: var(--gold-border); color: var(--gold); }
+
+.btn-today-cta {
+    margin-top: auto;
+    background: var(--gold); color: #000;
+    border: none; padding: 9px 14px;
+    border-radius: 14px; font-weight: 600;
+    font-size: 0.8rem; font-family: inherit;
+    cursor: pointer; align-self: flex-start;
+    transition: opacity 0.15s, transform 0.1s;
+}
+.btn-today-cta:active { transform: scale(0.97); }
+
+/* ── In Progress (stale sessions) ───────────────────────────────────────────── */
+.inprogress-card {
+    background: var(--glass);
+    backdrop-filter: blur(15px);
+    border-radius: 20px;
+    padding: 16px 18px;
+    margin-bottom: 10px;
+    border: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+}
+.inprogress-info { flex: 1; min-width: 0; }
+.inprogress-name {
+    font-size: 0.9rem; font-weight: 400; margin: 0 0 3px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.inprogress-meta { font-size: 0.72rem; color: var(--text-dim); margin: 0; }
+.inprogress-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+
+.btn-sm { padding: 9px 16px !important; font-size: 0.8rem !important; width: auto !important; border-radius: 14px !important; }
+
+/* ── Schedule Tag ───────────────────────────────────────────────────────────── */
+.card-title-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+.schedule-tag {
+    font-size: 0.6rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 1px;
+    padding: 3px 8px; border-radius: 8px;
+    white-space: nowrap;
+}
+.schedule-tag-morning { background: rgba(243,156,18,0.18); color: var(--gold); border: 1px solid rgba(243,156,18,0.3); }
+.schedule-tag-evening { background: rgba(100,120,230,0.18); color: #aab4f8; border: 1px solid rgba(100,120,230,0.3); }
+.schedule-tag-both    { background: rgba(255,255,255,0.08); color: var(--text-dim); border: 1px solid var(--border); }
+
+/* ── Manage-blocks schedule row ─────────────────────────────────────────────── */
+.manage-schedule-row { padding: 0 0 4px; }
+.manage-schedule-label {
+    display: block;
+    font-size: 0.65rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 1.2px;
+    color: var(--text-dim); margin-bottom: 6px;
+}
+
 /* ── Loading ────────────────────────────────────────────────────────────────── */
 .loading-text { color: var(--text-dim); font-size: 0.85rem; text-align: center; padding: 40px 0; }
 

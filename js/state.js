@@ -12,6 +12,7 @@ let _state = {
     modal: null,           // null | 'new-litany' | 'add-block' | 'manage-blocks' | 'confirm-delete'
     modalData: {},
     theme: { mode: 'night', city: '', nextPrayer: '' },
+    timings: null,   // raw prayer timings from aladhan API
 };
 
 const _subscribers = [];

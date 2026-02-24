@@ -49,7 +49,7 @@ async function fetchAndApply(pos) {
         const locationStr = city ? `${city} • ` : '';
         if (el) el.textContent = `${locationStr}${_isDay ? 'Day Mode' : 'Night Mode'} • Next: ${nextPrayer}`;
 
-        setState({ theme: { mode: _isDay ? 'day' : 'night', city, nextPrayer } });
+        setState({ timings: _timings, theme: { mode: _isDay ? 'day' : 'night', city, nextPrayer } });
 
     } catch (_) {
         if (el) el.textContent = 'Could not fetch prayer times';

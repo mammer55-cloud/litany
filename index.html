@@ -90,6 +90,12 @@
             <h2 class="modal-heading">New Litany</h2>
             <input type="text" id="new-litany-name" class="modal-input" placeholder="Name (e.g. Morning Wird)" />
             <input type="text" id="new-litany-desc" class="modal-input" placeholder="Description (optional)" />
+            <select id="new-litany-schedule" class="modal-input modal-select">
+                <option value="">No schedule</option>
+                <option value="morning">Morning (Fajr → Dhuhr)</option>
+                <option value="evening">Evening (Asr → Fajr)</option>
+                <option value="both">Morning &amp; Evening</option>
+            </select>
             <div class="modal-actions">
                 <button class="btn-play btn-secondary" id="modal-new-litany-cancel">Cancel</button>
                 <button class="btn-play" id="modal-new-litany-confirm">Create</button>

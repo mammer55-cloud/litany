@@ -33,15 +33,17 @@ export function closeModal() {
 export function openNewLitanyModal({ onCreated }) {
     document.getElementById('new-litany-name').value = '';
     document.getElementById('new-litany-desc').value = '';
+    document.getElementById('new-litany-schedule').value = '';
     openModal('new-litany');
     setTimeout(() => document.getElementById('new-litany-name').focus(), 150);
 
     document.getElementById('modal-new-litany-confirm').onclick = async () => {
-        const name = document.getElementById('new-litany-name').value.trim();
-        const desc = document.getElementById('new-litany-desc').value.trim();
+        const name     = document.getElementById('new-litany-name').value.trim();
+        const desc     = document.getElementById('new-litany-desc').value.trim();
+        const schedule = document.getElementById('new-litany-schedule').value;
         if (!name) { document.getElementById('new-litany-name').focus(); return; }
         try {
-            await db.createLitany(name, desc);
+            await db.createLitany(name, desc, schedule);
             closeModal();
             if (onCreated) onCreated();
         } catch (_) {
@@ -86,9 +88,31 @@ export async function openAddBlockModal(blockId, blockTitle) {
 
 // ── Manage Blocks ─────────────────────────────────────────────────────────────
 
-export async function openManageBlocksModal(litanyId, litanyName) {
+export async function openManageBlocksModal(litanyId, litanyName, litanySchedule) {
     _manageBlocksLitanyId = litanyId;
     document.getElementById('manage-blocks-title').textContent = litanyName;
+
+    // Render schedule row inside the modal (above the block list)
+    let scheduleRow = document.getElementById('manage-schedule-row');
+    if (!scheduleRow) {
+        scheduleRow = document.createElement('div');
+        scheduleRow.id = 'manage-schedule-row';
+        scheduleRow.className = 'manage-schedule-row';
+        const list = document.getElementById('manage-blocks-list');
+        list.parentNode.insertBefore(scheduleRow, list);
+    }
+    scheduleRow.innerHTML = `
+        <label class="manage-schedule-label">Schedule</label>
+        <select id="manage-schedule-select" class="modal-input modal-select" style="margin-bottom:12px">
+            <option value="">No schedule</option>
+            <option value="morning">Morning (Fajr → Dhuhr)</option>
+            <option value="evening">Evening (Asr → Fajr)</option>
+            <option value="both">Morning &amp; Evening</option>
+        </select>`;
+    document.getElementById('manage-schedule-select').value = litanySchedule || '';
+    document.getElementById('manage-schedule-select').onchange = async (e) => {
+        await db.updateLitanySchedule(litanyId, e.target.value);
+    };
 
     await renderManageList(litanyId);
     openModal('manage-blocks');
