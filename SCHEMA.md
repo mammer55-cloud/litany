@@ -64,6 +64,7 @@
 | last_active | TIMESTAMPTZ | NULL, DEFAULT now() |
 | session_label | TEXT | NULL, DEFAULT 'Freestyle' |
 | start_time | TIMESTAMPTZ | NULL, DEFAULT now() |
+| intent | TEXT | NULL |
 
 ### `public.litany_schedules`
 | Column | Type | Constraints |
