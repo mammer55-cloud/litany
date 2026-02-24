@@ -168,4 +168,19 @@ export const db = {
             .update({ is_completed: true })
             .eq('id', sessionId);
     },
+
+    async clearAllPersonalData() {
+        // Fetch all personal litany IDs first
+        const { data: litanies } = await client
+            .from('litanies')
+            .select('id')
+            .eq('is_preset', false);
+        const ids = (litanies || []).map(l => l.id);
+        if (ids.length) {
+            // Cascade on litany delete handles sessions + structure
+            await client.from('litanies').delete().in('id', ids);
+        }
+        // Also wipe any orphaned sessions
+        await client.from('litany_sessions').delete().eq('is_completed', true);
+    },
 };

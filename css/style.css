@@ -5,29 +5,41 @@
     --gold:        #f39c12;
     --gold-dim:    rgba(243, 156, 18, 0.15);
     --gold-border: rgba(243, 156, 18, 0.3);
-    --glass:       rgba(255, 255, 255, 0.08);
-    --border:      rgba(255, 255, 255, 0.15);
+    --glass:       rgba(255, 255, 255, 0.11);
+    --border:      rgba(255, 255, 255, 0.18);
     --text:        #ffffff;
-    --text-dim:    rgba(255, 255, 255, 0.45);
+    --text-dim:    rgba(255, 255, 255, 0.5);
     --danger:      #e05555;
+    --safe-top:    env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 body.mode-day {
-    --text:        #2d3436;
-    --text-dim:    rgba(45, 52, 54, 0.5);
-    --glass:       rgba(0, 0, 0, 0.05);
-    --border:      rgba(0, 0, 0, 0.1);
+    --text:        #1a1a2e;
+    --text-dim:    rgba(26, 26, 46, 0.55);
+    --glass:       rgba(255, 255, 255, 0.45);
+    --border:      rgba(0, 0, 0, 0.12);
 }
 
 /* ── Base ───────────────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
 
+html {
+    /* Fills the status bar region with body background color */
+    background: #05050a;
+    height: 100%;
+}
+
 body {
     margin: 0;
     font-family: 'Inter', sans-serif;
-    background: #0a0a0c;
+    background: #05050a;
     color: var(--text);
     overflow: hidden;
-    transition: background 2s ease, color 1s ease;
+    transition: background 1.5s ease, color 0.8s ease;
+    /* Extend into safe areas */
+    padding-top: var(--safe-top);
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
 }
 
 /* ── Ambient orbs ───────────────────────────────────────────────────────────── */
@@ -54,7 +66,7 @@ body {
 @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
 .screen-inner {
-    padding: 44px 20px 140px;
+    padding: 44px 20px calc(130px + var(--safe-bottom));
 }
 
 .screen-header {
@@ -80,19 +92,23 @@ body {
 /* ── Navigation ─────────────────────────────────────────────────────────────── */
 .nav {
     position: fixed;
-    bottom: 30px; left: 50%;
+    bottom: calc(20px + var(--safe-bottom)); left: 50%;
     transform: translateX(-50%);
-    width: 85%;
+    width: 88%;
     display: flex;
-    background: rgba(20, 20, 20, 0.4);
-    backdrop-filter: blur(25px);
+    background: rgba(12, 12, 18, 0.65);
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
     padding: 10px;
     border-radius: 40px;
     border: 1px solid var(--border);
     z-index: 1000;
     transition: opacity 0.4s, transform 0.4s cubic-bezier(0.4,0,0.2,1);
 }
-.nav.hidden { opacity: 0; transform: translate(-50%, 100px); pointer-events: none; }
+body.mode-day .nav {
+    background: rgba(240, 235, 220, 0.7);
+}
+.nav.hidden { opacity: 0; transform: translate(-50%, 120px); pointer-events: none; }
 .nav-btn {
     flex: 1; background: none; border: none;
     color: var(--text); opacity: 0.4;
@@ -159,9 +175,9 @@ body {
 .btn-edit:hover { background: rgba(255,255,255,0.12); }
 
 .btn-delete-litany {
-    background: rgba(255,255,255,0.06);
+    background: var(--glass);
     border: 1px solid var(--border);
-    color: rgba(255,255,255,0.35);
+    color: var(--text-dim);
     width: 30px; height: 30px;
     border-radius: 50%; font-size: 0.7rem;
     cursor: pointer; flex-shrink: 0;
@@ -345,6 +361,15 @@ body {
 .history-card-complete { opacity: 0.7; }
 .history-litany-name { font-weight: 400; font-size: 0.95rem; margin: 0 0 4px; }
 .history-meta { font-size: 0.78rem; color: var(--text-dim); margin: 0; }
+
+/* ── Settings ────────────────────────────────────────────────────────────────── */
+.settings-time {
+    margin-bottom: 10px;
+    color-scheme: dark;
+}
+body.mode-day .settings-time { color-scheme: light; }
+.settings-row { display: flex; gap: 10px; margin-top: 4px; }
+.settings-row .btn-play { flex: 1; }
 
 /* ── Modals ─────────────────────────────────────────────────────────────────── */
 .modal-overlay {
