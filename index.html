@@ -13,102 +13,101 @@
     <div class="orb orb-sun"  id="orb-sun"></div>
     <div class="orb orb-moon" id="orb-moon"></div>
 
-    <!-- Intent Modal -->
-    <div id="intent-modal">
-        <div class="intent-box">
-            <h2 id="intent-title" class="intent-heading">Launch Litany</h2>
-            <p class="intent-sub">Select your session intent</p>
-
-            <div class="intent-grid" id="intent-options"></div>
-
-            <div id="intent-add-row" class="intent-add-row">
-                <input type="text" id="new-intent-label" class="intent-add-input" placeholder="+ New intention label&hellip;" />
-                <input type="text" id="new-intent-time" class="intent-add-input intent-add-time hidden" placeholder="Time hint (e.g. After Fajr)" />
-                <button class="btn-intent-save hidden" id="btn-save-intent" onclick="saveNewIntention()">Save</button>
+    <!-- Home Screen -->
+    <div id="screen-home" class="screen active">
+        <div class="screen-inner">
+            <div class="screen-header">
+                <h1 class="page-title">My Litanies</h1>
+                <button class="btn-icon" id="btn-new-litany" aria-label="New litany">+ New</button>
             </div>
-
-            <div id="resume-section" class="resume-section" style="display:none">
-                <p class="resume-label">Unfinished Session Found</p>
-                <div class="resume-actions">
-                    <button class="btn-play btn-resume-style" id="btn-resume">Resume</button>
-                    <button class="btn-play btn-secondary" id="btn-start-fresh">Start Fresh</button>
-                </div>
-            </div>
-
-            <div class="intent-actions">
-                <button class="btn-play" id="btn-start-flow">Flow</button>
-                <button class="btn-play btn-secondary" id="btn-start-tap">Tap</button>
-            </div>
-            <button class="btn-cancel" id="btn-cancel-intent">Cancel</button>
+            <p id="prayer-status" class="prayer-status">Connecting…</p>
+            <div id="resume-banner"></div>
+            <div id="roster-list"></div>
         </div>
     </div>
 
-    <!-- New Litany Modal -->
-    <div id="new-litany-modal" class="bottom-modal-overlay">
-        <div class="bottom-modal">
+    <!-- Explore Screen -->
+    <div id="screen-explore" class="screen">
+        <div class="screen-inner">
+            <div class="screen-header">
+                <h1 class="page-title">Explore</h1>
+            </div>
+            <div id="explore-list"></div>
+        </div>
+    </div>
+
+    <!-- History Screen -->
+    <div id="screen-history" class="screen">
+        <div class="screen-inner">
+            <div class="screen-header">
+                <h1 class="page-title">Sessions</h1>
+            </div>
+            <div id="history-list"></div>
+        </div>
+    </div>
+
+    <!-- Player Screen -->
+    <div id="screen-player" class="screen player-screen">
+        <div class="center-line"></div>
+        <div id="player-view"></div>
+        <button id="btn-exit-player" class="btn-exit" aria-label="Exit player">✕</button>
+    </div>
+
+    <!-- Modals -->
+    <div id="modal-overlay" class="modal-overlay">
+
+        <!-- New Litany -->
+        <div id="modal-new-litany" class="bottom-modal" role="dialog" aria-label="New Litany">
             <h2 class="modal-heading">New Litany</h2>
             <input type="text" id="new-litany-name" class="modal-input" placeholder="Name (e.g. Morning Wird)" />
             <input type="text" id="new-litany-desc" class="modal-input" placeholder="Description (optional)" />
             <div class="modal-actions">
-                <button class="btn-play btn-secondary" onclick="closeBottomModal('new-litany-modal')">Cancel</button>
-                <button class="btn-play" onclick="createLitany()">Create</button>
+                <button class="btn-play btn-secondary" id="modal-new-litany-cancel">Cancel</button>
+                <button class="btn-play" id="modal-new-litany-confirm">Create</button>
             </div>
         </div>
-    </div>
 
-    <!-- Add to Litany Modal -->
-    <div id="add-modal" class="bottom-modal-overlay">
-        <div class="bottom-modal">
-            <h2 class="modal-heading" id="add-modal-title">Add to Litany</h2>
-            <select id="add-litany-select" class="modal-input modal-select"></select>
-            <input type="number" id="add-count" class="modal-input" placeholder="Count (e.g. 33, 99, 100)" min="1" value="33" />
+        <!-- Add Block to Litany -->
+        <div id="modal-add-block" class="bottom-modal" role="dialog" aria-label="Add Block">
+            <h2 class="modal-heading" id="add-block-title">Add to Litany</h2>
+            <select id="add-block-litany-select" class="modal-input modal-select"></select>
+            <input type="number" id="add-block-count" class="modal-input" placeholder="Count (e.g. 33)" min="1" value="33" />
             <div class="modal-actions">
-                <button class="btn-play btn-secondary" onclick="closeBottomModal('add-modal')">Cancel</button>
-                <button class="btn-play" onclick="confirmAddToLitany()">Add</button>
+                <button class="btn-play btn-secondary" id="modal-add-block-cancel">Cancel</button>
+                <button class="btn-play" id="modal-add-block-confirm">Add</button>
             </div>
         </div>
-    </div>
 
-    <!-- Manage Blocks Modal -->
-    <div id="blocks-modal" class="bottom-modal-overlay">
-        <div class="bottom-modal">
-            <h2 class="modal-heading" id="blocks-modal-title">Manage Blocks</h2>
-            <div id="blocks-list"></div>
+        <!-- Manage Blocks -->
+        <div id="modal-manage-blocks" class="bottom-modal bottom-modal-tall" role="dialog" aria-label="Manage Blocks">
+            <h2 class="modal-heading" id="manage-blocks-title">Blocks</h2>
+            <div id="manage-blocks-list"></div>
             <div class="modal-actions" style="margin-top:16px">
-                <button class="btn-play btn-secondary" onclick="closeBottomModal('blocks-modal')">Done</button>
+                <button class="btn-play btn-secondary" id="modal-manage-blocks-close">Done</button>
             </div>
         </div>
-    </div>
 
-    <!-- Home Page -->
-    <div id="home" class="page active">
-        <h1 class="page-title">My Litanies</h1>
-        <p id="prayer-status" class="prayer-status">Connecting to sun&hellip;</p>
-        <button class="btn-new-litany" onclick="openNewLitanyModal()">+ New Litany</button>
-        <div id="roster-list"></div>
-    </div>
+        <!-- Confirm Delete -->
+        <div id="modal-confirm-delete" class="bottom-modal" role="dialog" aria-label="Confirm Delete">
+            <h2 class="modal-heading">Delete Litany?</h2>
+            <p class="modal-body-text" id="confirm-delete-text"></p>
+            <div class="modal-actions">
+                <button class="btn-play btn-secondary" id="modal-confirm-delete-cancel">Cancel</button>
+                <button class="btn-play btn-danger" id="modal-confirm-delete-confirm">Delete</button>
+            </div>
+        </div>
 
-    <!-- Shop Page -->
-    <div id="shop" class="page">
-        <h1 class="page-title">Shop</h1>
-        <p class="prayer-status">Browse adhkar and add to your litanies</p>
-        <input type="search" id="shop-search" class="shop-search-input" placeholder="Search adhkar&hellip;" />
-        <div id="shop-list"></div>
-    </div>
-
-    <!-- Player Page -->
-    <div id="player" class="page player-page">
-        <div class="center-line"></div>
-        <div id="player-view"></div>
-        <button id="btn-exit-player" class="btn-exit" aria-label="Exit player">&#x2715;</button>
     </div>
 
     <!-- Bottom Navigation -->
     <nav class="nav" id="main-nav" aria-label="Main navigation">
-        <button id="nav-home" class="active" aria-label="My Litanies">Litanies</button>
-        <button id="nav-shop" aria-label="Shop">Shop</button>
+        <button data-screen="home"    class="nav-btn active">Litanies</button>
+        <button data-screen="explore" class="nav-btn">Explore</button>
+        <button data-screen="history" class="nav-btn">History</button>
     </nav>
 
-    <script src="js/app.js"></script>
+    <div id="app-toast" role="status" aria-live="polite"></div>
+
+    <script type="module" src="js/main.js"></script>
 </body>
 </html>
